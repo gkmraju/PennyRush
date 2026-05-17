@@ -11,7 +11,9 @@ import java.nio.charset.StandardCharsets
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +23,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,7 +36,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.Button
@@ -64,7 +74,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -381,7 +396,7 @@ private fun HomeContent(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
         item {
@@ -400,15 +415,39 @@ private fun HomeContent(
                 )
             }
         } else {
-            item { HeroBalance(transactions) }
-            item { MetricRow(transactions) }
-            item { SectionLabel("Recent activity") }
-            items(transactions.take(20)) { transaction ->
-                TransactionRow(transaction)
+            item { WalletHero(transactions) }
+            item {
+                QuickActions(
+                    onAdd = onAddManually,
+                    onImport = onImportStatement,
+                )
+            }
+            item { StatsStrip(transactions) }
+            item { SpendingBreakdown(transactions) }
+
+            val today = LocalDate.now()
+            val sorted = transactions.sortedByDescending { it.date }
+            val groups = sorted.groupBy { bucketLabel(it.date, today) }
+            groups.forEach { (label, items) ->
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SectionLabel(label)
+                }
+                items(items) { transaction ->
+                    TransactionRow(transaction)
+                }
             }
         }
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
+}
+
+private fun bucketLabel(date: LocalDate, today: LocalDate): String = when {
+    date == today -> "Today"
+    date == today.minusDays(1) -> "Yesterday"
+    date.isAfter(today.minusDays(7)) -> "This week"
+    date.isAfter(today.minusDays(30)) -> "This month"
+    else -> date.format(DateTimeFormatter.ofPattern("MMM yyyy"))
 }
 
 @Composable
@@ -554,7 +593,7 @@ private fun EmptyHomeCard(
 }
 
 @Composable
-private fun HeroBalance(transactions: List<Transaction>) {
+private fun WalletHero(transactions: List<Transaction>, accountName: String = "Primary balance") {
     val net = transactions.sumOf { it.amount }
     val now = YearMonth.now()
     val thisMonth = transactions.filter { YearMonth.from(it.date) == now }
@@ -562,79 +601,264 @@ private fun HeroBalance(transactions: List<Transaction>) {
     val expenses = thisMonth.filter { it.amount < 0 }.sumOf { abs(it.amount) }
     val delta = income - expenses
     val positive = delta >= 0
+    val savingsRate = if (income > 0) (delta / income).coerceIn(0.0, 1.0) else 0.0
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = "NET BALANCE",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.5.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = MoneyFormatter.format(net),
-            style = MaterialTheme.typography.displayMedium.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-1.5).sp,
-                fontSize = 44.sp,
-            ),
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        if (thisMonth.isNotEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = (if (positive) Income else Expense).copy(alpha = 0.15f),
-            ) {
-                Text(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    text = "${if (positive) "▲" else "▼"}  ${MoneyFormatter.format(delta, showSign = true)} this month",
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontWeight = FontWeight.SemiBold,
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = Color.Transparent,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF065F46),
+                            Color(0xFF059669),
+                            Color(0xFF10B981),
+                        ),
                     ),
-                    color = if (positive) Income else Expense,
+                    shape = RoundedCornerShape(28.dp),
+                ),
+        ) {
+            // decorative orb
+            Box(
+                modifier = Modifier
+                    .size(220.dp)
+                    .offset(x = 180.dp, y = (-80).dp)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .offset(x = (-30).dp, y = 120.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape),
+            )
+
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = accountName.uppercase(),
+                            color = Color.White.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 1.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "PennyRush wallet",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.15f),
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            text = "INR",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                        )
+                    }
+                }
+
+                Text(
+                    text = MoneyFormatter.format(net),
+                    color = Color.White,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-2).sp,
+                        fontSize = 46.sp,
+                    ),
                 )
+
+                if (thisMonth.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color.White.copy(alpha = 0.2f),
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = "${if (positive) "▲" else "▼"}  ${MoneyFormatter.format(delta, showSign = true)} this month",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+
+                    if (income > 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "Saved this month",
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(
+                                    text = "${(savingsRate * 100).toInt()}%",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                    ),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .background(
+                                        Color.White.copy(alpha = 0.18f),
+                                        RoundedCornerShape(999.dp),
+                                    ),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(savingsRate.toFloat().coerceAtLeast(0.02f))
+                                        .height(6.dp)
+                                        .background(Color.White, RoundedCornerShape(999.dp)),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MetricRow(transactions: List<Transaction>) {
-    val now = YearMonth.now()
-    val thisMonth = transactions.filter { YearMonth.from(it.date) == now }
-    val income = thisMonth.filter { it.amount > 0 }.sumOf { it.amount }
-    val expenses = thisMonth.filter { it.amount < 0 }.sumOf { abs(it.amount) }
-    val saved = income - expenses
-
+private fun QuickActions(
+    onAdd: () -> Unit,
+    onImport: () -> Unit,
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MetricTile("Income", income, Income, Modifier.weight(1f))
-        MetricTile("Spend", expenses, Expense, Modifier.weight(1f))
-        MetricTile("Net", saved, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+        QuickActionTile("Add", Icons.Rounded.Add, Modifier.weight(1f), onAdd)
+        QuickActionTile("Import", Icons.Rounded.FileDownload, Modifier.weight(1f), onImport)
+        QuickActionTile("Categories", Icons.Rounded.Category, Modifier.weight(1f)) {}
+        QuickActionTile("Reports", Icons.Rounded.BarChart, Modifier.weight(1f)) {}
     }
 }
 
 @Composable
-private fun MetricTile(
+private fun QuickActionTile(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            modifier = Modifier.size(54.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun StatsStrip(transactions: List<Transaction>) {
+    val now = YearMonth.now()
+    val thisMonth = transactions.filter { YearMonth.from(it.date) == now }
+    val income = thisMonth.filter { it.amount > 0 }.sumOf { it.amount }
+    val expenses = thisMonth.filter { it.amount < 0 }.sumOf { abs(it.amount) }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        StatCard(
+            label = "Income",
+            amount = income,
+            accent = Income,
+            icon = Icons.Rounded.ArrowDownward,
+            modifier = Modifier.weight(1f),
+        )
+        StatCard(
+            label = "Spend",
+            amount = expenses,
+            accent = Expense,
+            icon = Icons.Rounded.ArrowUpward,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StatCard(
     label: String,
     amount: Double,
     accent: Color,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(112.dp),
+        modifier = modifier,
         shape = CardShape,
         color = MaterialTheme.colorScheme.surfaceVariant,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier.size(8.dp).background(accent, CircleShape),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.size(28.dp),
+                    shape = CircleShape,
+                    color = accent.copy(alpha = 0.18f),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = accent,
+                        )
+                    }
+                }
                 Text(
                     text = label.uppercase(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -643,16 +867,115 @@ private fun MetricTile(
                         fontWeight = FontWeight.SemiBold,
                     ),
                 )
-                Text(
-                    text = MoneyFormatter.compact(amount),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.5).sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            }
+            Text(
+                text = MoneyFormatter.compact(amount),
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "this month",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpendingBreakdown(transactions: List<Transaction>) {
+    val byKind = transactions
+        .filter { it.amount < 0 }
+        .groupBy { it.kind }
+        .map { (kind, txns) -> kind to txns.sumOf { abs(it.amount) } }
+        .sortedByDescending { it.second }
+        .take(6)
+    val total = byKind.sumOf { it.second }
+    if (byKind.isEmpty() || total == 0.0) return
+
+    PrCard(padding = 20) {
+        Text(
+            text = "Where your money went",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp,
+            ),
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(132.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(modifier = Modifier.size(132.dp)) {
+                    val strokeWidth = 22.dp.toPx()
+                    val gap = 2f
+                    var startAngle = -90f
+                    byKind.forEach { (kind, amount) ->
+                        val sweep = ((amount / total) * 360.0).toFloat() - gap
+                        drawArc(
+                            color = accentForKind(kind),
+                            startAngle = startAngle,
+                            sweepAngle = sweep.coerceAtLeast(0f),
+                            useCenter = false,
+                            topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
+                            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                        )
+                        startAngle += sweep + gap
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "SPENT",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.2.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                    )
+                    Text(
+                        MoneyFormatter.compact(total),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.5).sp,
+                        ),
+                    )
+                }
+            }
+            Spacer(Modifier.width(20.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                byKind.forEach { (kind, amount) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(accentForKind(kind), CircleShape),
+                        )
+                        Text(
+                            text = kindStyle(kind).first
+                                .lowercase()
+                                .replaceFirstChar { it.uppercase() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = MoneyFormatter.compact(amount),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -1221,8 +1544,8 @@ private fun StatementPreviewScreen(
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        MetricTile("In", income, Income, Modifier.weight(1f))
-                        MetricTile("Out", expenses, Expense, Modifier.weight(1f))
+                        StatCard("In", income, Income, Icons.Rounded.ArrowDownward, Modifier.weight(1f))
+                        StatCard("Out", expenses, Expense, Icons.Rounded.ArrowUpward, Modifier.weight(1f))
                     }
                 }
                 LazyColumn(
