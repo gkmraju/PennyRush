@@ -1,6 +1,7 @@
 package dev.pennyrush.feature.home
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
@@ -57,10 +59,11 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -104,6 +107,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import dev.pennyrush.core.common.MoneyFormatter
+import dev.pennyrush.core.designsystem.AppPreferences
 import dev.pennyrush.core.designsystem.ThemeMode
 import dev.pennyrush.core.designsystem.ThemePreferences
 import java.time.LocalDate
@@ -347,6 +351,7 @@ fun HomeRoute(
                 userAvatarUrl = userAvatarUrl,
                 onImportStatement = openImport,
                 onAddManually = { showAddSheet = true },
+                onNavigateToMore = { selectedDestination = HomeDestination.More },
                 onSignOut = onSignOut,
                 modifier = Modifier.padding(padding),
             )
@@ -402,6 +407,7 @@ private fun HomeContent(
     userAvatarUrl: String?,
     onImportStatement: () -> Unit,
     onAddManually: () -> Unit,
+    onNavigateToMore: () -> Unit,
     onSignOut: suspend () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -420,6 +426,7 @@ private fun HomeContent(
                 userEmail = userEmail,
                 userName = userName,
                 userAvatarUrl = userAvatarUrl,
+                onNavigateToMore = onNavigateToMore,
                 onSignOut = onSignOut,
             )
         }
@@ -471,6 +478,7 @@ private fun Header(
     userEmail: String?,
     userName: String?,
     userAvatarUrl: String?,
+    onNavigateToMore: () -> Unit,
     onSignOut: suspend () -> Unit,
 ) {
     Row(
@@ -498,72 +506,129 @@ private fun Header(
             userEmail = userEmail,
             userName = userName,
             userAvatarUrl = userAvatarUrl,
+            onNavigateToMore = onNavigateToMore,
             onSignOut = onSignOut,
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileAvatar(
     userEmail: String?,
     userName: String?,
     userAvatarUrl: String?,
+    onNavigateToMore: () -> Unit,
     onSignOut: suspend () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var menuOpen by remember { mutableStateOf(false) }
+    var sheetOpen by remember { mutableStateOf(false) }
 
-    Box {
-        Surface(
-            modifier = Modifier.size(44.dp).clip(CircleShape),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
-            onClick = { menuOpen = true },
-        ) {
-            if (!userAvatarUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = userAvatarUrl,
-                    contentDescription = userName ?: userEmail,
-                    modifier = Modifier.size(44.dp).clip(CircleShape),
+    Surface(
+        modifier = Modifier.size(44.dp).clip(CircleShape),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+        onClick = { sheetOpen = true },
+    ) {
+        if (!userAvatarUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = userAvatarUrl,
+                contentDescription = userName ?: userEmail,
+                modifier = Modifier.size(44.dp).clip(CircleShape),
+            )
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = initialsFor(userName, userEmail),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = initialsFor(userName, userEmail),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
+    }
 
-        DropdownMenu(
-            expanded = menuOpen,
-            onDismissRequest = { menuOpen = false },
+    if (sheetOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { sheetOpen = false },
+            containerColor = MaterialTheme.colorScheme.background,
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                userName?.let {
-                    Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        modifier = Modifier.size(64.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+                    ) {
+                        if (!userAvatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = userAvatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp).clip(CircleShape),
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = initialsFor(userName, userEmail),
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = userName ?: "Signed in",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                        userEmail?.let {
+                            Text(
+                                text = it,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    }
                 }
-                userEmail?.let {
-                    Text(
-                        it,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium,
+
+                SettingsGroup {
+                    SettingsRow(
+                        icon = Icons.Rounded.Settings,
+                        title = "Settings",
+                        subtitle = "Currency, theme, notifications",
+                        onClick = {
+                            sheetOpen = false
+                            onNavigateToMore()
+                        },
+                    )
+                    SettingsDivider()
+                    SettingsRow(
+                        icon = Icons.AutoMirrored.Rounded.Logout,
+                        title = "Sign out",
+                        subtitle = userEmail,
+                        onClick = {
+                            sheetOpen = false
+                            scope.launch { onSignOut() }
+                        },
                     )
                 }
+                Spacer(Modifier.height(16.dp))
             }
-            DropdownMenuItem(
-                text = { Text("Sign out") },
-                onClick = {
-                    menuOpen = false
-                    scope.launch { onSignOut() }
-                },
-            )
         }
     }
 }
@@ -1209,12 +1274,61 @@ private fun MoreContent(
     val context = LocalContext.current
     val themeMode = ThemePreferences.themeMode
 
-    var budgetAlerts by rememberSaveable { mutableStateOf(true) }
-    var largeTxnAlerts by rememberSaveable { mutableStateOf(true) }
-    var biometricLock by rememberSaveable { mutableStateOf(false) }
+    val budgetAlerts = AppPreferences.budgetAlerts
+    val largeTxnAlerts = AppPreferences.largeTransactions
+    val biometricLock = AppPreferences.biometricLock
+
+    var versionDialog by remember { mutableStateOf(false) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val txns = TransactionsStore.transactions
+            val outcome = runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(buildTransactionsCsv(txns).toByteArray(Charsets.UTF_8))
+                    } ?: error("Could not open destination file.")
+                }
+            }
+            Toast.makeText(
+                context,
+                outcome.fold(
+                    { "Exported ${txns.size} transaction${if (txns.size != 1) "s" else ""}" },
+                    { "Export failed: ${it.message ?: "unknown error"}" },
+                ),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
 
     fun toast(message: String) {
         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    fun openExternal(url: String) {
+        runCatching {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { toast("Couldn't open link") }
+    }
+
+    fun sendFeedback() {
+        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+            putExtra(Intent.EXTRA_SUBJECT, "PennyRush feedback")
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "Hi PennyRush team,\n\n" +
+                    "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n" +
+                    "Android: ${android.os.Build.VERSION.RELEASE}\n\n",
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { context.startActivity(intent) }
+            .onFailure { toast("No email app installed") }
     }
 
     LazyColumn(
@@ -1308,8 +1422,15 @@ private fun MoreContent(
                 SettingsRow(
                     icon = Icons.Rounded.IosShare,
                     title = "Export transactions",
-                    subtitle = "CSV · coming soon",
-                    onClick = { toast("Export coming soon") },
+                    subtitle = "Save as CSV",
+                    onClick = {
+                        val count = TransactionsStore.transactions.size
+                        if (count == 0) {
+                            toast("Nothing to export yet")
+                        } else {
+                            exportLauncher.launch("pennyrush-${LocalDate.now()}.csv")
+                        }
+                    },
                 )
                 SettingsDivider()
                 SettingsRow(
@@ -1334,7 +1455,7 @@ private fun MoreContent(
                     trailing = {
                         Switch(
                             checked = budgetAlerts,
-                            onCheckedChange = { budgetAlerts = it },
+                            onCheckedChange = { AppPreferences.updateBudgetAlerts(it) },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                             ),
@@ -1349,7 +1470,7 @@ private fun MoreContent(
                     trailing = {
                         Switch(
                             checked = largeTxnAlerts,
-                            onCheckedChange = { largeTxnAlerts = it },
+                            onCheckedChange = { AppPreferences.updateLargeTransactions(it) },
                             colors = SwitchDefaults.colors(
                                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                             ),
@@ -1370,7 +1491,7 @@ private fun MoreContent(
                         Switch(
                             checked = biometricLock,
                             onCheckedChange = {
-                                biometricLock = it
+                                AppPreferences.updateBiometricLock(it)
                                 toast(if (it) "Biometric lock enabled" else "Biometric lock disabled")
                             },
                             colors = SwitchDefaults.colors(
@@ -1390,25 +1511,26 @@ private fun MoreContent(
                     title = "Version",
                     subtitle = "PennyRush for Android",
                     trailing = { SettingsValue("0.1.0") },
+                    onClick = { versionDialog = true },
                 )
                 SettingsDivider()
                 SettingsRow(
                     icon = Icons.Rounded.Lock,
                     title = "Privacy policy",
-                    onClick = { toast("Privacy policy coming soon") },
+                    onClick = { openExternal("https://pennyrush.dev/privacy") },
                 )
                 SettingsDivider()
                 SettingsRow(
                     icon = Icons.Rounded.Description,
                     title = "Terms of service",
-                    onClick = { toast("Terms coming soon") },
+                    onClick = { openExternal("https://pennyrush.dev/terms") },
                 )
                 SettingsDivider()
                 SettingsRow(
                     icon = Icons.AutoMirrored.Rounded.Send,
                     title = "Send feedback",
                     subtitle = "Tell us what to build next",
-                    onClick = { toast("Feedback channel coming soon") },
+                    onClick = { sendFeedback() },
                 )
             }
         }
@@ -1441,6 +1563,40 @@ private fun MoreContent(
 
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
+
+    if (versionDialog) {
+        AlertDialog(
+            onDismissRequest = { versionDialog = false },
+            confirmButton = {
+                TextButton(onClick = { versionDialog = false }) { Text("Close") }
+            },
+            title = { Text("PennyRush", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Version 0.1.0 · debug build")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            shape = CardShape,
+        )
+    }
+}
+
+private fun buildTransactionsCsv(transactions: List<Transaction>): String {
+    val sb = StringBuilder()
+    sb.append("Date,Description,Merchant,Amount,Type,Kind\n")
+    transactions.sortedByDescending { it.date }.forEach { t ->
+        val desc = t.description.replace("\"", "\"\"")
+        val merch = t.merchant.replace("\"", "\"\"")
+        val type = if (t.amount >= 0) "Income" else "Expense"
+        sb.append("${t.date},\"$desc\",\"$merch\",${"%.2f".format(t.amount)},$type,${t.kind}\n")
+    }
+    return sb.toString()
 }
 
 @Composable
