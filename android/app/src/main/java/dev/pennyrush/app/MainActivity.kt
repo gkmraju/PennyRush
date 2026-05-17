@@ -1,20 +1,338 @@
 package dev.pennyrush.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.isSystemInDarkTheme
 import dev.pennyrush.core.designsystem.PennyrushTheme
+import dev.pennyrush.core.designsystem.ThemeMode
+import dev.pennyrush.core.designsystem.ThemePreferences
 import dev.pennyrush.feature.home.HomeRoute
+import dev.pennyrush.feature.home.TransactionsSync
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.handleDeeplinks
+import io.github.jan.supabase.auth.providers.Google
+import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.user.UserInfo
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAuthDeeplink(intent)
         enableEdgeToEdge()
         setContent {
-            PennyrushTheme {
-                HomeRoute()
+            val mode = ThemePreferences.themeMode
+            val systemDark = isSystemInDarkTheme()
+            PennyrushTheme(
+                darkTheme = when (mode) {
+                    ThemeMode.System -> systemDark
+                    ThemeMode.Light -> false
+                    ThemeMode.Dark -> true
+                },
+            ) {
+                PennyrushApp()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeeplink(intent)
+    }
+
+    private fun handleAuthDeeplink(intent: Intent) {
+        if (PennyrushSupabase.isConfigured) {
+            PennyrushSupabase.client.handleDeeplinks(intent)
+        }
+    }
+}
+
+@Composable
+private fun PennyrushApp() {
+    if (!PennyrushSupabase.isConfigured) {
+        AuthSetupRequired()
+        return
+    }
+
+    val supabase = PennyrushSupabase.client
+    val repo = remember { TransactionsRepository(supabase) }
+    val sessionStatus by supabase.auth.sessionStatus.collectAsState()
+
+    when (val status = sessionStatus) {
+        is SessionStatus.Authenticated -> {
+            val userId = status.session.user?.id
+            val sync = remember(userId) { syncFor(repo, userId) }
+            HomeRoute(
+                userEmail = status.session.user?.email,
+                userName = status.session.user?.metaString("full_name", "name"),
+                userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
+                sync = sync,
+                onSignOut = {
+                    supabase.auth.signOut()
+                },
+            )
+        }
+        SessionStatus.Initializing -> LoadingAuth()
+        is SessionStatus.NotAuthenticated,
+        is SessionStatus.RefreshFailure -> GoogleSignInRoute()
+    }
+}
+
+@Composable
+private fun GoogleSignInRoute() {
+    val scope = rememberCoroutineScope()
+    val insets: PaddingValues = WindowInsets.systemBars.asPaddingValues()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        SignInBackdrop()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(insets)
+                .padding(horizontal = 32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BrandMark()
+            Spacer(Modifier.height(28.dp))
+            Text(
+                text = "PennyRush",
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.5).sp,
+                ),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "Every penny, in a rush to be tracked.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(insets)
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        PennyrushSupabase.client.auth.signInWith(Google)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = CircleShape,
+                        clip = false,
+                    ),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF1F1F1F),
+                ),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_google_g),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    text = "Continue with Google",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.1.sp,
+                    ),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Your data syncs securely across devices.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+private fun syncFor(repo: TransactionsRepository, userId: String?): TransactionsSync {
+    if (userId.isNullOrBlank()) return TransactionsSync()
+    var accountIdCache: String? = null
+    suspend fun ensureAccount(): String =
+        accountIdCache ?: repo.ensureAccount(userId).also { accountIdCache = it }
+    return TransactionsSync(
+        enabled = true,
+        loadAll = { repo.listForUser(userId) },
+        persistOne = { repo.insertOne(userId, ensureAccount(), it) },
+        persistBatch = { repo.insertBatch(userId, ensureAccount(), it) },
+    )
+}
+
+private fun UserInfo.metaString(vararg keys: String): String? {
+    val meta = userMetadata ?: return null
+    for (key in keys) {
+        (meta[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }?.let { return it }
+    }
+    return null
+}
+
+@Composable
+private fun SignInBackdrop() {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF10B981).copy(alpha = 0.38f),
+                    Color.Transparent,
+                ),
+                center = Offset(size.width * 0.85f, size.height * 0.10f),
+                radius = size.width * 0.95f,
+            ),
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF06B6D4).copy(alpha = 0.22f),
+                    Color.Transparent,
+                ),
+                center = Offset(size.width * 0.05f, size.height * 0.92f),
+                radius = size.width * 0.85f,
+            ),
+        )
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF8B5CF6).copy(alpha = 0.12f),
+                    Color.Transparent,
+                ),
+                center = Offset(size.width * 0.50f, size.height * 0.50f),
+                radius = size.width * 0.55f,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun BrandMark() {
+    Box(
+        modifier = Modifier
+            .size(104.dp)
+            .shadow(
+                elevation = 24.dp,
+                shape = RoundedCornerShape(28.dp),
+                ambientColor = MaterialTheme.colorScheme.primary,
+                spotColor = MaterialTheme.colorScheme.primary,
+            )
+            .clip(RoundedCornerShape(28.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF34D399),
+                        Color(0xFF10B981),
+                        Color(0xFF059669),
+                    ),
+                ),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_pennyrush_logo),
+            contentDescription = null,
+            modifier = Modifier.size(96.dp),
+        )
+    }
+}
+
+@Composable
+private fun AuthSetupRequired() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Supabase auth is not configured",
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        Text(
+            text = "Add PENNYRUSH_SUPABASE_URL and PENNYRUSH_SUPABASE_ANON_KEY to android/local.properties, then rebuild the app.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+@Composable
+private fun LoadingAuth() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }

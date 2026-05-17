@@ -6,18 +6,29 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
-        android:icon="@drawable/ic_launcher_foreground"
-        android:label="Pennyrush"
-        android:roundIcon="@drawable/ic_launcher_foreground"
+        android:icon="@mipmap/ic_launcher"
+        android:label="PennyRush"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Pennyrush">
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Pennyrush">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="auth-callback"
+                    android:scheme="pennyrush" />
             </intent-filter>
         </activity>
     </application>

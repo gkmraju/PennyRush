@@ -1,10 +1,21 @@
 package dev.pennyrush.feature.home
 
-import androidx.compose.foundation.Canvas
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,302 +27,1352 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import dev.pennyrush.core.common.MoneyFormatter
+import dev.pennyrush.core.designsystem.ThemeMode
+import dev.pennyrush.core.designsystem.ThemePreferences
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+
+private val CardShape = RoundedCornerShape(24.dp)
+private val ButtonShape = RoundedCornerShape(16.dp)
+private val ChipShape = RoundedCornerShape(10.dp)
+private val InputShape = RoundedCornerShape(14.dp)
+private val ButtonHeight = 52.dp
+private val Income = Color(0xFF10B981)
+private val Expense = Color(0xFFEF4444)
+
+// ─── Reusable primitives ───────────────────────────────────────────────────────
+
+@Composable
+private fun PrCard(
+    modifier: Modifier = Modifier,
+    padding: Int = 20,
+    color: Color = MaterialTheme.colorScheme.surfaceVariant,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = CardShape,
+        color = color,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+    ) {
+        Column(modifier = Modifier.padding(padding.dp), content = content)
+    }
+}
+
+@Composable
+private fun PrButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(ButtonHeight),
+        shape = ButtonShape,
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Text(text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun PrSecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(ButtonHeight),
+        shape = ButtonShape,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Text(text, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+    }
+}
+
+@Composable
+private fun KindChip(kind: TransactionKind) {
+    val (label, tint) = kindStyle(kind)
+    Surface(
+        shape = ChipShape,
+        color = tint.copy(alpha = 0.15f),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            color = tint,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+                letterSpacing = 0.6.sp,
+            ),
+        )
+    }
+}
+
+private fun kindStyle(kind: TransactionKind): Pair<String, Color> = when (kind) {
+    TransactionKind.UPI -> "UPI" to Color(0xFFA78BFA)
+    TransactionKind.Card -> "CARD" to Color(0xFF60A5FA)
+    TransactionKind.Transfer -> "TRANSFER" to Color(0xFF22D3EE)
+    TransactionKind.ATM -> "ATM" to Color(0xFFFBBF24)
+    TransactionKind.Salary -> "SALARY" to Color(0xFF10B981)
+    TransactionKind.Bill -> "BILL" to Color(0xFFFB7185)
+    TransactionKind.Cash -> "CASH" to Color(0xFF94A3B8)
+    TransactionKind.Other -> "OTHER" to Color(0xFF94A3B8)
+}
+
+private fun accentForKind(kind: TransactionKind): Color = kindStyle(kind).second
+
+// ─── Route ─────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeRoute() {
+fun HomeRoute(
+    userEmail: String? = null,
+    userName: String? = null,
+    userAvatarUrl: String? = null,
+    sync: TransactionsSync = TransactionsSync(),
+    onSignOut: suspend () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var selectedDestination by rememberSaveable { mutableStateOf(HomeDestination.Home) }
+    var showAddSheet by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<StatementPreviewState?>(null) }
+    var isLoading by remember { mutableStateOf(sync.enabled) }
+
+    LaunchedEffect(sync) {
+        if (!sync.enabled) {
+            isLoading = false
+            return@LaunchedEffect
+        }
+        runCatching { sync.loadAll() }
+            .onSuccess { TransactionsStore.replaceAll(it) }
+            .onFailure {
+                Toast.makeText(
+                    context,
+                    "Couldn't load transactions: ${it.message ?: "unknown error"}",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        isLoading = false
+    }
+
+    val statementPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val name = context.displayNameFor(uri)
+        preview = StatementPreviewState.Loading(name)
+        scope.launch {
+            preview = parseStatement(context, uri, name)
+        }
+    }
+
+    val openImport: () -> Unit = {
+        statementPicker.launch(
+            arrayOf(
+                "text/csv",
+                "text/comma-separated-values",
+                "application/pdf",
+                "text/*",
+                "application/*",
+            ),
+        )
+    }
+
+    preview?.let { state ->
+        StatementPreviewScreen(
+            state = state,
+            onCancel = { preview = null },
+            onImport = { transactions ->
+                scope.launch {
+                    val existing = TransactionsStore.transactions
+                    val seen = existing.mapTo(HashSet()) {
+                        "${it.date}|${it.amount}|${it.description.lowercase().trim()}"
+                    }
+                    val (toInsert, duplicates) = transactions.partition {
+                        "${it.date}|${it.amount}|${it.description.lowercase().trim()}" !in seen
+                    }
+                    val persisted = if (sync.enabled && toInsert.isNotEmpty()) {
+                        runCatching { sync.persistBatch(toInsert) }
+                            .getOrElse {
+                                Toast.makeText(
+                                    context,
+                                    "Couldn't sync to server: ${it.message ?: "unknown error"}",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                                return@launch
+                            }
+                    } else {
+                        toInsert
+                    }
+                    TransactionsStore.addAll(persisted)
+                    val msg = buildString {
+                        append("Imported ${persisted.size} transaction")
+                        if (persisted.size != 1) append("s")
+                        if (duplicates.isNotEmpty()) {
+                            append(" · ${duplicates.size} duplicate")
+                            if (duplicates.size != 1) append("s")
+                            append(" skipped")
+                        }
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    preview = null
+                }
+            },
+        )
+        return
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {},
-                shape = RoundedCornerShape(28.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Text("+", style = MaterialTheme.typography.titleLarge)
+            if (selectedDestination == HomeDestination.Home) {
+                FloatingActionButton(
+                    onClick = { showAddSheet = true },
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Text("+", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
             }
         },
-        bottomBar = { HomeBottomBar() },
+        bottomBar = {
+            HomeBottomBar(
+                selectedDestination = selectedDestination,
+                onDestinationSelected = { selectedDestination = it },
+            )
+        },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            item { Header() }
-            item { HeroBalance() }
-            item { MetricRow() }
-            item { SpendingCard() }
-            item { InsightsStrip() }
-            item {
-                Text(
-                    text = "Recent transactions",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-            items(recentTransactions) { transaction ->
-                TransactionRow(transaction)
-            }
-            item { Spacer(modifier = Modifier.height(80.dp)) }
-        }
-    }
-}
-
-@Composable
-private fun Header() {
-    Column {
-        Text(
-            text = "Good afternoon · ${LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d"))}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        Text(
-            text = "Your money, live",
-            style = MaterialTheme.typography.headlineMedium,
-        )
-    }
-}
-
-@Composable
-private fun HeroBalance() {
-    Column {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Text(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                text = "Net worth",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        when (selectedDestination) {
+            HomeDestination.Home -> HomeContent(
+                userEmail = userEmail,
+                userName = userName,
+                userAvatarUrl = userAvatarUrl,
+                onImportStatement = openImport,
+                onAddManually = { showAddSheet = true },
+                onSignOut = onSignOut,
+                modifier = Modifier.padding(padding),
+            )
+            HomeDestination.Transactions -> TransactionsContent(modifier = Modifier.padding(padding))
+            HomeDestination.Insights -> InsightsContent(modifier = Modifier.padding(padding))
+            HomeDestination.More -> MoreContent(
+                userEmail = userEmail,
+                userName = userName,
+                userAvatarUrl = userAvatarUrl,
+                onSignOut = onSignOut,
+                modifier = Modifier.padding(padding),
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = MoneyFormatter.format(48210.0),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
+    }
+
+    if (showAddSheet) {
+        QuickAddSheet(
+            onImportStatement = {
+                showAddSheet = false
+                openImport()
+            },
+            onSave = { transaction ->
+                scope.launch {
+                    val saved = if (sync.enabled) {
+                        runCatching { sync.persistOne(transaction) }
+                            .getOrElse {
+                                Toast.makeText(
+                                    context,
+                                    "Couldn't save: ${it.message ?: "unknown error"}",
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                                return@launch
+                            }
+                    } else {
+                        transaction
+                    }
+                    TransactionsStore.add(saved)
+                    showAddSheet = false
+                }
+            },
+            onDismiss = { showAddSheet = false },
         )
+    }
+}
+
+// ─── Home tab ──────────────────────────────────────────────────────────────────
+
+@Composable
+private fun HomeContent(
+    userEmail: String?,
+    userName: String?,
+    userAvatarUrl: String?,
+    onImportStatement: () -> Unit,
+    onAddManually: () -> Unit,
+    onSignOut: suspend () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val transactions = TransactionsStore.transactions
+    val isEmpty = transactions.isEmpty()
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            Header(
+                userEmail = userEmail,
+                userName = userName,
+                userAvatarUrl = userAvatarUrl,
+                onSignOut = onSignOut,
+            )
+        }
+        if (isEmpty) {
+            item {
+                EmptyHomeCard(
+                    onImport = onImportStatement,
+                    onAddManually = onAddManually,
+                )
+            }
+        } else {
+            item { HeroBalance(transactions) }
+            item { MetricRow(transactions) }
+            item { SectionLabel("Recent activity") }
+            items(transactions.take(20)) { transaction ->
+                TransactionRow(transaction)
+            }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun Header(
+    userEmail: String?,
+    userName: String?,
+    userAvatarUrl: String?,
+    onSignOut: suspend () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = greetingForNow() + " · " + LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d")),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = userName?.substringBefore(' ')?.let { "Hi, $it" } ?: "Welcome",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        ProfileAvatar(
+            userEmail = userEmail,
+            userName = userName,
+            userAvatarUrl = userAvatarUrl,
+            onSignOut = onSignOut,
+        )
+    }
+}
+
+@Composable
+private fun ProfileAvatar(
+    userEmail: String?,
+    userName: String?,
+    userAvatarUrl: String?,
+    onSignOut: suspend () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Box {
+        Surface(
+            modifier = Modifier.size(44.dp).clip(CircleShape),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+            onClick = { menuOpen = true },
+        ) {
+            if (!userAvatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = userAvatarUrl,
+                    contentDescription = userName ?: userEmail,
+                    modifier = Modifier.size(44.dp).clip(CircleShape),
+                )
+            } else {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = initialsFor(userName, userEmail),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        DropdownMenu(
+            expanded = menuOpen,
+            onDismissRequest = { menuOpen = false },
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                userName?.let {
+                    Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                userEmail?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            DropdownMenuItem(
+                text = { Text("Sign out") },
+                onClick = {
+                    menuOpen = false
+                    scope.launch { onSignOut() }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyHomeCard(
+    onImport: () -> Unit,
+    onAddManually: () -> Unit,
+) {
+    PrCard(padding = 24) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.TrendingUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(Modifier.height(16.dp))
         Text(
-            modifier = Modifier.padding(top = 8.dp),
-            text = "Up ${MoneyFormatter.format(1240.0)} this month after bills and goals.",
+            text = "Start tracking your money",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.5).sp,
+            ),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Upload a bank statement CSV (PhonePe, Paytm, HDFC, ICICI, SBI all export this) or add transactions one at a time. PennyRush surfaces trends and recurring charges as soon as it has data.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
         )
+        Spacer(Modifier.height(20.dp))
+        PrButton("Import statement", onClick = onImport, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(10.dp))
+        PrSecondaryButton("Add manually", onClick = onAddManually, modifier = Modifier.fillMaxWidth())
     }
 }
 
 @Composable
-private fun MetricRow() {
+private fun HeroBalance(transactions: List<Transaction>) {
+    val net = transactions.sumOf { it.amount }
+    val now = YearMonth.now()
+    val thisMonth = transactions.filter { YearMonth.from(it.date) == now }
+    val income = thisMonth.filter { it.amount > 0 }.sumOf { it.amount }
+    val expenses = thisMonth.filter { it.amount < 0 }.sumOf { abs(it.amount) }
+    val delta = income - expenses
+    val positive = delta >= 0
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "NET BALANCE",
+            style = MaterialTheme.typography.labelMedium.copy(
+                letterSpacing = 1.5.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = MoneyFormatter.format(net),
+            style = MaterialTheme.typography.displayMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-1.5).sp,
+                fontSize = 44.sp,
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (thisMonth.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = (if (positive) Income else Expense).copy(alpha = 0.15f),
+            ) {
+                Text(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    text = "${if (positive) "▲" else "▼"}  ${MoneyFormatter.format(delta, showSign = true)} this month",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = if (positive) Income else Expense,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricRow(transactions: List<Transaction>) {
+    val now = YearMonth.now()
+    val thisMonth = transactions.filter { YearMonth.from(it.date) == now }
+    val income = thisMonth.filter { it.amount > 0 }.sumOf { it.amount }
+    val expenses = thisMonth.filter { it.amount < 0 }.sumOf { abs(it.amount) }
+    val saved = income - expenses
+
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        MetricTile(label = "Income", amount = 6400.0, color = Color(0xFF10B981), modifier = Modifier.weight(1f))
-        MetricTile(label = "Expenses", amount = 4560.0, color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
-        MetricTile(label = "Saved", amount = 1840.0, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        MetricTile("Income", income, Income, Modifier.weight(1f))
+        MetricTile("Spend", expenses, Expense, Modifier.weight(1f))
+        MetricTile("Net", saved, MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun MetricTile(label: String, amount: Double, color: Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(96.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(16.dp),
+private fun MetricTile(
+    label: String,
+    amount: Double,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(112.dp),
+        shape = CardShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(text = label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
-            Text(text = MoneyFormatter.format(amount), color = color, style = MaterialTheme.typography.titleLarge)
-        }
-    }
-}
-
-@Composable
-private fun SpendingCard() {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(text = "Spending", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
-                Text(text = "May categories", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(14.dp))
-                spendingSlices.take(4).forEach { slice ->
-                    Row(
-                        modifier = Modifier.padding(vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(slice.color, CircleShape),
-                        )
-                        Text(
-                            modifier = Modifier.padding(start = 8.dp),
-                            text = slice.name,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-            }
-            SpendingRing()
-        }
-    }
-}
-
-@Composable
-private fun SpendingRing() {
-    Canvas(modifier = Modifier.size(132.dp)) {
-        val strokeWidth = 18.dp.toPx()
-        var startAngle = -90f
-        val total = spendingSlices.sumOf { it.amount }
-        spendingSlices.forEach { slice ->
-            val sweep = (slice.amount / total * 360f).toFloat()
-            drawArc(
-                color = slice.color,
-                startAngle = startAngle,
-                sweepAngle = sweep,
-                useCenter = false,
-                topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
-                size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+            Box(
+                modifier = Modifier.size(8.dp).background(accent, CircleShape),
             )
-            startAngle += sweep
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = label.uppercase(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+                Text(
+                    text = MoneyFormatter.compact(amount),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun InsightsStrip() {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        InsightTile("Dining is up", "Food spend is 28% above average.", Modifier.weight(1f))
-        InsightTile("Bills ahead", "Two recurring payments land this week.", Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun InsightTile(title: String, body: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(132.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleLarge)
-            Text(text = body, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-@Composable
-private fun TransactionRow(transaction: RecentTransaction) {
+private fun TransactionRow(transaction: Transaction) {
+    val accent = accentForKind(transaction.kind)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .background(transaction.color, RoundedCornerShape(16.dp)),
+                .background(accent.copy(alpha = 0.18f), RoundedCornerShape(14.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = transaction.category.take(1), color = Color(0xFF0A0A0A), fontWeight = FontWeight.Bold)
+            Text(
+                text = transaction.merchant.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "·",
+                color = accent,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+            )
         }
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp),
+            modifier = Modifier.weight(1f).padding(start = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(text = transaction.merchant, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-            Text(text = transaction.category, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Text(
+                text = transaction.merchant,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                KindChip(transaction.kind)
+                Text(
+                    text = transaction.date.format(DateTimeFormatter.ofPattern("MMM d")),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
         Text(
-            text = MoneyFormatter.format(transaction.amount),
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (transaction.amount > 0) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
+            text = MoneyFormatter.format(transaction.amount, showSign = true),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = if (transaction.amount > 0) Income else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
 @Composable
-private fun HomeBottomBar() {
-    Surface(tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            listOf("Home", "Transactions", "Insights", "More").forEach { label ->
+private fun SectionLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelMedium.copy(
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.SemiBold,
+        ),
+    )
+}
+
+// ─── Other tabs ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun HomeBottomBar(
+    selectedDestination: HomeDestination,
+    onDestinationSelected: (HomeDestination) -> Unit,
+) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+        HomeDestination.entries.forEach { destination ->
+            NavigationBarItem(
+                selected = destination == selectedDestination,
+                onClick = { onDestinationSelected(destination) },
+                icon = {
+                    Icon(
+                        imageVector = destination.icon,
+                        contentDescription = destination.label,
+                    )
+                },
+                label = { Text(destination.label, fontWeight = FontWeight.Medium) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransactionsContent(modifier: Modifier = Modifier) {
+    val transactions = TransactionsStore.transactions
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            Text(
+                text = "Transactions",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+            )
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        if (transactions.isEmpty()) {
+            item {
                 Text(
-                    text = label,
-                    color = if (label == "Home") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "No transactions yet. Import a statement or add one from Home.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else {
+            items(transactions) { TransactionRow(it) }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun InsightsContent(modifier: Modifier = Modifier) {
+    val transactions = TransactionsStore.transactions
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            Text(
+                text = "Insights",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+            )
+        }
+        if (transactions.isEmpty()) {
+            item {
+                Text(
+                    text = "Insights appear once PennyRush has at least a few transactions to analyse.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        } else {
+            val byKind = transactions
+                .filter { it.amount < 0 }
+                .groupBy { it.kind }
+                .map { (kind, txns) -> kind to txns.sumOf { abs(it.amount) } }
+                .sortedByDescending { it.second }
+
+            item {
+                PrCard {
+                    Text(
+                        text = "Spend by type",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    byKind.forEach { (kind, total) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            KindChip(kind)
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = MoneyFormatter.format(total),
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    text = "Category breakdowns, recurring detection, and AI-generated insights are next on the roadmap.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                 )
+            }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun MoreContent(
+    userEmail: String?,
+    userName: String?,
+    userAvatarUrl: String?,
+    onSignOut: suspend () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val themeMode = ThemePreferences.themeMode
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        item {
+            Text(
+                "More",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+            )
+        }
+        item {
+            ProfileCard(
+                userEmail = userEmail,
+                userName = userName,
+                userAvatarUrl = userAvatarUrl,
+            )
+        }
+        item { SectionLabel("Appearance") }
+        item {
+            ThemeSelector(
+                current = themeMode,
+                onChange = { ThemePreferences.set(it) },
+            )
+        }
+        item { SectionLabel("Account") }
+        item {
+            PrSecondaryButton(
+                text = "Sign out",
+                onClick = { scope.launch { onSignOut() } },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            Text(
+                text = "Budgets, goals, subscriptions, debts, and investments will live here as the next feature modules come online.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun ProfileCard(
+    userEmail: String?,
+    userName: String?,
+    userAvatarUrl: String?,
+) {
+    PrCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(72.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+            ) {
+                if (!userAvatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = userAvatarUrl,
+                        contentDescription = userName ?: userEmail,
+                        modifier = Modifier.size(72.dp).clip(CircleShape),
+                    )
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = initialsFor(userName, userEmail),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = userName ?: "Signed in",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                )
+                userEmail?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
     }
 }
 
-private data class SpendingSlice(val name: String, val amount: Double, val color: Color)
+@Composable
+private fun ThemeSelector(
+    current: ThemeMode,
+    onChange: (ThemeMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ThemeMode.entries.forEach { mode ->
+            val selected = mode == current
+            Surface(
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = ButtonShape,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) Color.Transparent else MaterialTheme.colorScheme.outline,
+                ),
+                onClick = { onChange(mode) },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = mode.name,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+    }
+}
 
-private val spendingSlices = listOf(
-    SpendingSlice("Food", 920.0, Color(0xFFF5B82E)),
-    SpendingSlice("Rent", 1700.0, Color(0xFFA3A3A3)),
-    SpendingSlice("Transport", 380.0, Color(0xFF60A5FA)),
-    SpendingSlice("Shopping", 640.0, Color(0xFFF9A8D4)),
-    SpendingSlice("Bills", 520.0, Color(0xFFA78BFA)),
-)
+// ─── Quick add sheet ───────────────────────────────────────────────────────────
 
-private data class RecentTransaction(
-    val merchant: String,
-    val category: String,
-    val amount: Double,
-    val color: Color,
-)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickAddSheet(
+    onImportStatement: () -> Unit,
+    onSave: (Transaction) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var isExpense by remember { mutableStateOf(true) }
+    var amount by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    val amountValue = amount.toDoubleOrNull()?.let { if (isExpense) -abs(it) else abs(it) }
 
-private val recentTransactions = listOf(
-    RecentTransaction("Whole Foods", "Groceries", -84.0, Color(0xFFD9F99D)),
-    RecentTransaction("Payroll", "Income", 3200.0, Color(0xFFBBF7D0)),
-    RecentTransaction("Uber", "Transport", -24.0, Color(0xFFBFDBFE)),
-    RecentTransaction("Netflix", "Subscriptions", -18.0, Color(0xFFE9D5FF)),
-)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.background,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "Add transaction",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp,
+                ),
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = ButtonShape,
+                    color = if (isExpense) Expense.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        if (isExpense) Expense.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline,
+                    ),
+                    onClick = { isExpense = true },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "Expense",
+                            color = if (isExpense) Expense else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+                Surface(
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = ButtonShape,
+                    color = if (!isExpense) Income.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(
+                        1.dp,
+                        if (!isExpense) Income.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outline,
+                    ),
+                    onClick = { isExpense = false },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "Income",
+                            color = if (!isExpense) Income else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                label = { Text("Amount (₹)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                shape = InputShape,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
+            )
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = InputShape,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
+            )
+
+            PrButton(
+                text = "Save transaction",
+                onClick = {
+                    val value = amountValue ?: return@PrButton
+                    onSave(
+                        Transaction(
+                            date = LocalDate.now(),
+                            description = description.trim(),
+                            merchant = MerchantExtractor.analyze(description).merchant,
+                            amount = value,
+                            kind = MerchantExtractor.analyze(description).kind,
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = amountValue != null && description.isNotBlank(),
+            )
+
+            PrSecondaryButton(
+                text = "Import statement instead",
+                onClick = onImportStatement,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+// ─── Statement preview ─────────────────────────────────────────────────────────
+
+@Composable
+private fun StatementPreviewScreen(
+    state: StatementPreviewState,
+    onCancel: () -> Unit,
+    onImport: (List<Transaction>) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onCancel) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                Text(
+                    "Statement preview",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    state.fileName(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+
+        when (state) {
+            is StatementPreviewState.Loading -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Parsing…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            is StatementPreviewState.PdfNotSupported -> Column(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    "PDF parsing isn't built yet",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    "Most banks let you export the same statement as CSV — try that and re-import. Native PDF parsing is on the roadmap.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                PrButton("Got it", onClick = onCancel, modifier = Modifier.fillMaxWidth())
+            }
+            is StatementPreviewState.Failed -> Column(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    "Couldn't read that file",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    state.reason,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (state.sample.isNotEmpty()) {
+                    PrCard(padding = 14) {
+                        Text(
+                            "First lines we saw:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        state.sample.forEach {
+                            Text(it, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+                PrButton("Choose another file", onClick = onCancel, modifier = Modifier.fillMaxWidth())
+            }
+            is StatementPreviewState.Success -> {
+                val income = state.transactions.filter { it.amount > 0 }.sumOf { it.amount }
+                val expenses = state.transactions.filter { it.amount < 0 }.sumOf { abs(it.amount) }
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = "${state.transactions.size} transactions",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        MetricTile("In", income, Income, Modifier.weight(1f))
+                        MetricTile("Out", expenses, Expense, Modifier.weight(1f))
+                    }
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f).padding(horizontal = 20.dp).padding(top = 16.dp),
+                ) {
+                    items(state.transactions) { TransactionRow(it) }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    PrSecondaryButton(
+                        "Cancel",
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                    )
+                    PrButton(
+                        "Import ${state.transactions.size}",
+                        onClick = { onImport(state.transactions) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private sealed interface StatementPreviewState {
+    data class Loading(val name: String) : StatementPreviewState
+    data class Success(val name: String, val transactions: List<Transaction>) : StatementPreviewState
+    data class Failed(val name: String, val reason: String, val sample: List<String>) : StatementPreviewState
+    data class PdfNotSupported(val name: String) : StatementPreviewState
+}
+
+private fun StatementPreviewState.fileName(): String = when (this) {
+    is StatementPreviewState.Loading -> name
+    is StatementPreviewState.Success -> name
+    is StatementPreviewState.Failed -> name
+    is StatementPreviewState.PdfNotSupported -> name
+}
+
+/** Decode bytes as text, honouring BOM, then trying strict UTF-8, then Windows-1252. */
+private fun decodeBytes(buffer: ByteArray, length: Int): String {
+    if (length >= 3 &&
+        buffer[0] == 0xEF.toByte() && buffer[1] == 0xBB.toByte() && buffer[2] == 0xBF.toByte()
+    ) {
+        return String(buffer, 3, length - 3, StandardCharsets.UTF_8)
+    }
+    if (length >= 2 && buffer[0] == 0xFF.toByte() && buffer[1] == 0xFE.toByte()) {
+        return String(buffer, 2, length - 2, StandardCharsets.UTF_16LE)
+    }
+    if (length >= 2 && buffer[0] == 0xFE.toByte() && buffer[1] == 0xFF.toByte()) {
+        return String(buffer, 2, length - 2, StandardCharsets.UTF_16BE)
+    }
+    val strictUtf8 = runCatching {
+        StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(buffer, 0, length))
+            .toString()
+    }
+    return strictUtf8.getOrElse {
+        String(buffer, 0, length, Charset.forName("windows-1252"))
+    }
+}
+
+private suspend fun parseStatement(
+    context: Context,
+    uri: Uri,
+    name: String,
+): StatementPreviewState {
+    val isPdf = name.endsWith(".pdf", ignoreCase = true) ||
+        context.contentResolver.getType(uri)?.contains("pdf", ignoreCase = true) == true
+    if (isPdf) return StatementPreviewState.PdfNotSupported(name)
+
+    return withContext(Dispatchers.IO) {
+        runCatching {
+            val cap = StatementParser.MAX_BYTES
+            val buffer = ByteArray(cap + 1)
+            val read = context.contentResolver.openInputStream(uri)?.use { stream ->
+                var total = 0
+                while (total < buffer.size) {
+                    val n = stream.read(buffer, total, buffer.size - total)
+                    if (n <= 0) break
+                    total += n
+                }
+                total
+            } ?: 0
+            if (read == 0) {
+                return@runCatching StatementPreviewState.Failed(name, "File appears to be empty.", emptyList())
+            }
+            if (read > cap) {
+                return@runCatching StatementPreviewState.Failed(
+                    name,
+                    "File is larger than 5 MB. A real bank statement is usually a few hundred KB.",
+                    emptyList(),
+                )
+            }
+            val text = decodeBytes(buffer, read)
+            when (val outcome = StatementParser.parseCsv(text)) {
+                is ParseOutcome.Success -> StatementPreviewState.Success(name, outcome.transactions)
+                is ParseOutcome.Failed -> StatementPreviewState.Failed(name, outcome.reason, outcome.previewLines)
+            }
+        }.getOrElse {
+            StatementPreviewState.Failed(name, it.message ?: "Could not open the file.", emptyList())
+        }
+    }
+}
+
+private enum class HomeDestination(
+    val label: String,
+    val icon: ImageVector,
+) {
+    Home("Home", Icons.Rounded.Home),
+    Transactions("Transactions", Icons.AutoMirrored.Rounded.ReceiptLong),
+    Insights("Insights", Icons.Rounded.AutoAwesome),
+    More("More", Icons.Rounded.MoreHoriz),
+}
+
+private fun Context.displayNameFor(uri: Uri): String {
+    val fallback = uri.lastPathSegment ?: "Selected statement"
+    return contentResolver
+        .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+        ?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else fallback
+        } ?: fallback
+}
+
+private fun initialsFor(name: String?, email: String?): String {
+    name?.takeIf { it.isNotBlank() }?.let { n ->
+        val parts = n.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        return when {
+            parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}".uppercase()
+            parts.size == 1 -> parts[0].take(2).uppercase()
+            else -> "?"
+        }
+    }
+    email?.takeIf { it.isNotBlank() }?.let { return it.first().uppercase() }
+    return "?"
+}
+
+private fun greetingForNow(): String {
+    val hour = LocalTime.now().hour
+    return when {
+        hour < 5 -> "Late night"
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        hour < 21 -> "Good evening"
+        else -> "Good night"
+    }
+}

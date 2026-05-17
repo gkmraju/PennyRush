@@ -1,8 +1,13 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./hooks/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+  darkMode: "class",
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./hooks/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
@@ -24,7 +29,14 @@ const config: Config = {
         fab: "28px",
       },
       fontFamily: {
-        sans: ["Inter", "SF Pro Display", "SF Pro Text", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: [
+          "Inter",
+          "SF Pro Display",
+          "SF Pro Text",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
       },
       boxShadow: {
         soft: "0 16px 40px rgba(10, 10, 10, 0.08)",

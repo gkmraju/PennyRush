@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Pennyrush"
+rootProject.name = "PennyRush"
 
 include(":app")
 include(":core:common")

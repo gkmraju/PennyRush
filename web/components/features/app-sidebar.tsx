@@ -33,7 +33,7 @@ export function AppSidebar() {
           <CircleDollarSign className="h-6 w-6" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-base font-bold leading-tight">Pennyrush</p>
+          <p className="text-base font-bold leading-tight">PennyRush</p>
           <p className="text-xs text-muted-foreground">Every penny, tracked</p>
         </div>
       </div>
