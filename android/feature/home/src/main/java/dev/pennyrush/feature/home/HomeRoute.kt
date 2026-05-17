@@ -36,21 +36,34 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.CurrencyRupee
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +75,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -341,6 +356,7 @@ fun HomeRoute(
                 userEmail = userEmail,
                 userName = userName,
                 userAvatarUrl = userAvatarUrl,
+                onImportStatement = openImport,
                 onSignOut = onSignOut,
                 modifier = Modifier.padding(padding),
             )
@@ -1185,17 +1201,27 @@ private fun MoreContent(
     userEmail: String?,
     userName: String?,
     userAvatarUrl: String?,
+    onImportStatement: () -> Unit,
     onSignOut: suspend () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val themeMode = ThemePreferences.themeMode
+
+    var budgetAlerts by rememberSaveable { mutableStateOf(true) }
+    var largeTxnAlerts by rememberSaveable { mutableStateOf(true) }
+    var biometricLock by rememberSaveable { mutableStateOf(false) }
+
+    fun toast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
         item {
@@ -1214,30 +1240,303 @@ private fun MoreContent(
                 userAvatarUrl = userAvatarUrl,
             )
         }
-        item { SectionLabel("Appearance") }
-        item {
-            ThemeSelector(
-                current = themeMode,
-                onChange = { ThemePreferences.set(it) },
-            )
-        }
+
         item { SectionLabel("Account") }
         item {
-            PrSecondaryButton(
-                text = "Sign out",
-                onClick = { scope.launch { onSignOut() } },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SettingsGroup {
+                SettingsRow(
+                    icon = Icons.Rounded.CurrencyRupee,
+                    title = "Currency",
+                    subtitle = "Indian Rupee · INR",
+                    trailing = { SettingsValue("₹") },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.AccountBalance,
+                    title = "Primary account",
+                    subtitle = "PennyRush wallet",
+                )
+            }
         }
+
+        item { SectionLabel("Display") }
         item {
-            Text(
-                text = "Budgets, goals, subscriptions, debts, and investments will live here as the next feature modules come online.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium,
-            )
+            SettingsGroup {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsIconTile(Icons.Rounded.Palette)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Theme",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "Follows ${themeMode.name.lowercase()}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                        ThemeSelector(
+                            current = themeMode,
+                            onChange = { ThemePreferences.set(it) },
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
         }
+
+        item { SectionLabel("Data") }
+        item {
+            SettingsGroup {
+                SettingsRow(
+                    icon = Icons.Rounded.FileDownload,
+                    title = "Import statement",
+                    subtitle = "CSV from your bank",
+                    onClick = onImportStatement,
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.IosShare,
+                    title = "Export transactions",
+                    subtitle = "CSV · coming soon",
+                    onClick = { toast("Export coming soon") },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.DeleteSweep,
+                    title = "Clear local cache",
+                    subtitle = "Re-sync from Supabase on next launch",
+                    onClick = {
+                        TransactionsStore.clear()
+                        toast("Local cache cleared")
+                    },
+                )
+            }
+        }
+
+        item { SectionLabel("Notifications") }
+        item {
+            SettingsGroup {
+                SettingsRow(
+                    icon = Icons.Rounded.BarChart,
+                    title = "Budget alerts",
+                    subtitle = "When you cross a category limit",
+                    trailing = {
+                        Switch(
+                            checked = budgetAlerts,
+                            onCheckedChange = { budgetAlerts = it },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.NotificationsActive,
+                    title = "Large transactions",
+                    subtitle = "Notify when over ₹5,000",
+                    trailing = {
+                        Switch(
+                            checked = largeTxnAlerts,
+                            onCheckedChange = { largeTxnAlerts = it },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    },
+                )
+            }
+        }
+
+        item { SectionLabel("Security") }
+        item {
+            SettingsGroup {
+                SettingsRow(
+                    icon = Icons.Rounded.Fingerprint,
+                    title = "Biometric lock",
+                    subtitle = "Require fingerprint to unlock",
+                    trailing = {
+                        Switch(
+                            checked = biometricLock,
+                            onCheckedChange = {
+                                biometricLock = it
+                                toast(if (it) "Biometric lock enabled" else "Biometric lock disabled")
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    },
+                )
+            }
+        }
+
+        item { SectionLabel("About") }
+        item {
+            SettingsGroup {
+                SettingsRow(
+                    icon = Icons.Rounded.Info,
+                    title = "Version",
+                    subtitle = "PennyRush for Android",
+                    trailing = { SettingsValue("0.1.0") },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.Lock,
+                    title = "Privacy policy",
+                    onClick = { toast("Privacy policy coming soon") },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.Description,
+                    title = "Terms of service",
+                    onClick = { toast("Terms coming soon") },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.AutoMirrored.Rounded.Send,
+                    title = "Send feedback",
+                    subtitle = "Tell us what to build next",
+                    onClick = { toast("Feedback channel coming soon") },
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(4.dp)) }
+        item {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(ButtonShape)
+                    .clickable { scope.launch { onSignOut() } },
+                shape = ButtonShape,
+                color = Expense.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, Expense.copy(alpha = 0.3f)),
+            ) {
+                Box(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "Sign out",
+                        color = Expense,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                    )
+                }
+            }
+        }
+
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
+}
+
+@Composable
+private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+private fun SettingsRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    val baseModifier = Modifier.fillMaxWidth()
+    val rowModifier = (if (onClick != null) baseModifier.clickable(onClick = onClick) else baseModifier)
+        .padding(horizontal = 16.dp, vertical = 14.dp)
+
+    Row(
+        modifier = rowModifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsIconTile(icon)
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            subtitle?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        if (trailing != null) {
+            trailing()
+        } else if (onClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsIconTile(icon: ImageVector) {
+    Surface(
+        modifier = Modifier.size(36.dp),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsValue(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Medium,
+    )
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 64.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+        thickness = 1.dp,
+    )
 }
 
 @Composable
