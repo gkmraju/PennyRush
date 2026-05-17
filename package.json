@@ -1,0 +1,24 @@
+{
+  "name": "pennyrush",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cross-platform personal finance tracker, analyzer, and AI advisor.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/royalpinto007/PennyRush.git"
+  },
+  "bugs": {
+    "url": "https://github.com/royalpinto007/PennyRush/issues"
+  },
+  "homepage": "https://github.com/royalpinto007/PennyRush#readme",
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "web:dev": "npm --workspace web run dev",
+    "web:build": "npm --workspace web run build",
+    "web:lint": "npm --workspace web run lint",
+    "web:typecheck": "npm --workspace web run typecheck"
+  }
+}

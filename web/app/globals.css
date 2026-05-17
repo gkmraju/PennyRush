@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 42%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --border: 0 0% 90%;
+  --primary: 42 91% 57%;
+  --primary-foreground: 0 0% 4%;
+  --success: 160 84% 39%;
+  --danger: 0 74% 56%;
+}
+
+.dark {
+  --background: 0 0% 4%;
+  --foreground: 0 0% 94%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 65%;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 94%;
+  --border: 0 0% 16%;
+  --primary: 42 91% 57%;
+  --primary-foreground: 0 0% 4%;
+  --success: 160 84% 42%;
+  --danger: 0 74% 60%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: hsl(var(--background));
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Inter, "SF Pro Text", "SF Pro Display", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.35);
+}

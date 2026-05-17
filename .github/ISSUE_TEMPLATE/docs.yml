@@ -1,0 +1,22 @@
+name: Documentation
+description: Report missing, confusing, or outdated docs.
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or file
+      placeholder: README.md, docs/privacy-policy.md, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What needs to change?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested wording or fix

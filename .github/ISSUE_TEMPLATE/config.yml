@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/royalpinto007/PennyRush/security/advisories/new
+    about: Please report vulnerabilities privately when possible.
+  - name: Questions and support
+    url: https://github.com/royalpinto007/PennyRush/issues
+    about: Open an issue using fake data only.

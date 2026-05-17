@@ -1,0 +1,135 @@
+erDiagram
+  profiles ||--o{ accounts : owns
+  profiles ||--o{ categories : owns
+  profiles ||--o{ transactions : owns
+  profiles ||--o{ budgets : owns
+  profiles ||--o{ goals : owns
+  profiles ||--o{ subscriptions : owns
+  profiles ||--o{ debts : owns
+  profiles ||--o{ investments : owns
+  profiles ||--o{ insights : receives
+  profiles ||--o{ merchant_categorizations : learns
+  profiles ||--o{ ai_request_log : audits
+  profiles ||--o{ net_worth_snapshots : tracks
+
+  accounts ||--o{ transactions : contains
+  categories ||--o{ categories : parent
+  categories ||--o{ transactions : classifies
+  categories ||--o{ budgets : limits
+  categories ||--o{ subscriptions : labels
+  categories ||--o{ merchant_categorizations : maps
+  transactions ||--o| transactions : transfer_pair
+
+  profiles {
+    uuid id PK
+    text display_name
+    char currency
+    text locale
+    boolean local_only_mode
+    timestamptz created_at
+  }
+
+  accounts {
+    uuid id PK
+    uuid user_id FK
+    text name
+    account_type type
+    numeric balance
+    char currency
+    boolean archived
+  }
+
+  categories {
+    uuid id PK
+    uuid user_id FK
+    text name
+    uuid parent_id FK
+    boolean is_system
+  }
+
+  transactions {
+    uuid id PK
+    uuid user_id FK
+    uuid account_id FK
+    uuid category_id FK
+    numeric amount
+    transaction_type type
+    date date
+    text merchant
+    transaction_source source
+    numeric ai_confidence
+  }
+
+  budgets {
+    uuid id PK
+    uuid user_id FK
+    uuid category_id FK
+    numeric amount
+    budget_period period
+    jsonb alert_thresholds
+  }
+
+  goals {
+    uuid id PK
+    uuid user_id FK
+    text name
+    numeric target_amount
+    numeric current_amount
+    date target_date
+  }
+
+  subscriptions {
+    uuid id PK
+    uuid user_id FK
+    text name
+    numeric amount
+    billing_cycle billing_cycle
+    date next_billing_date
+    boolean active
+  }
+
+  debts {
+    uuid id PK
+    uuid user_id FK
+    text name
+    debt_type type
+    numeric principal
+    numeric interest_rate
+    debt_status status
+  }
+
+  investments {
+    uuid id PK
+    uuid user_id FK
+    text name
+    investment_type type
+    numeric quantity
+    numeric current_price
+  }
+
+  insights {
+    uuid id PK
+    uuid user_id FK
+    insight_type type
+    text title
+    text body
+    insight_severity severity
+    boolean dismissed
+  }
+
+  merchant_categorizations {
+    uuid id PK
+    uuid user_id FK
+    text merchant_normalized
+    uuid category_id FK
+    categorization_source source
+    numeric confidence
+  }
+
+  ai_request_log {
+    uuid id PK
+    uuid user_id FK
+    text endpoint
+    jsonb payload_summary
+    integer response_time_ms
+  }

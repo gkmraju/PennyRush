@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest a new feature or improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Pennyrush do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Web
+        - Android
+        - Supabase or database
+        - Edge Functions or AI
+        - Import or OCR
+        - Analytics or reports
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Project constraints
+      options:
+        - label: This can work without paid dependencies or tracking SDKs.
+        - label: This does not require storing raw uploaded files.
+        - label: This keeps AI keys server-side only.
