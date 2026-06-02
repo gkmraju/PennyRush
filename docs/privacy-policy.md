@@ -1,35 +1,33 @@
-# Pennyrush Privacy Policy
+# PennyRush Privacy Policy
 
-Last updated: May 17, 2026
+Last updated: June 3, 2026
 
-Pennyrush is designed to help you track personal finances without turning your financial life into an advertising product.
+PennyRush is designed to help you track personal finances without turning your financial life into an advertising product.
 
 ## Data We Store
 
-Pennyrush stores the structured finance data you choose to save, including accounts, categories, transactions, budgets, goals, subscriptions, debts, investments, insights, preferences, and AI activity logs.
+PennyRush stores the structured finance data you choose to save, including profile settings, accounts, categories, activity entries, budgets, goals, insights, and preferences.
 
 ## Files Are Never Stored
 
-When you import a bank statement, CSV, PDF, or receipt image, Pennyrush processes the file in memory. The raw file is discarded immediately after parsing. Pennyrush does not upload files to Supabase Storage or any other object storage service in v1.
+When you import a CSV statement on web, PennyRush parses the file in the browser and does not upload the raw statement file to object storage.
 
-Only the extracted transaction data that you confirm is saved.
+When you scan a receipt on Android, PennyRush reads the selected or captured image to extract entry details for review. PennyRush saves the resulting activity entry, not the raw receipt image.
 
-## AI Processing
+Only the extracted activity data that you confirm is saved.
 
-AI features run through Supabase Edge Functions. Model API keys are never included in the Android or web clients.
+## Categorization And Insights
 
-Pennyrush minimizes AI payloads. Categorization requests may include merchant text, amount, and notes for unknown transactions. Insight requests use compact aggregate summaries where possible. Pennyrush never sends account numbers, user names, emails, or authentication identifiers to AI providers.
-
-You can disable AI features with local-only mode.
+Current categorization and insight helpers use app rules and saved activity fields such as merchant, amount, note, date, and category. If server-side AI is added later, the policy and app controls must be updated before release.
 
 ## Security
 
-Pennyrush uses Supabase Auth and Postgres Row Level Security so users can only access their own rows. All requests use HTTPS. Android app lock and web two-factor authentication are part of the security roadmap.
+PennyRush uses Supabase Auth and authenticated database access. All production requests should use HTTPS. Keep your Google account secure and report suspicious account activity through the support channel listed with the app release.
 
-## Account Deletion
+## Data Controls
 
-Deleting your account cascades through user-owned Pennyrush data. Raw uploaded files do not need deletion because they are never stored.
+You can export activity as a CSV file from the app. You can delete saved activity entries from the Account and data tools. Account-level deletion is a release operations task and should be handled through the support channel until a self-serve account deletion flow is shipped.
 
 ## Tracking And Ads
 
-Pennyrush v1 uses no advertising SDKs, no paid analytics SDKs, and no third-party tracking pixels.
+PennyRush v1 uses no advertising SDKs, no paid analytics SDKs, and no third-party tracking pixels.

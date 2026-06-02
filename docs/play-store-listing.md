@@ -2,26 +2,25 @@
 
 ## Short Description
 
-Track spending, budgets, goals, bills, debts, and net worth with privacy-first AI.
+Track spending, imports, receipts, budgets, goals, and money patterns.
 
 ## Full Description
 
-Pennyrush is a clean personal finance tracker built to make money habits easier to see and act on.
+PennyRush is a clean personal finance tracker built to make money habits easier to see and act on.
 
-Add transactions manually, import statements, scan receipts, review budgets, track goals, monitor subscriptions, and understand your net worth from one simple dashboard.
+Add entries manually, import CSV statements, scan receipts, review budgets, track goals, and understand recent activity from one simple money hub.
 
-Privacy is central to Pennyrush. Uploaded statements and receipts are parsed in memory and discarded immediately. Files are never stored. AI features run server-side, keys are never exposed to the app, and you can disable AI features with local-only mode.
+Privacy is central to PennyRush. Statement files and receipt images are parsed for the entry data you choose to save. Raw statement files are not uploaded to storage by the web import flow, and receipt images are not saved by PennyRush after scan review.
 
 Key features:
 
-- Fast transaction tracking
-- Statement and CSV import with review before save
-- Receipt OCR
+- Fast activity tracking
+- CSV statement import with duplicate review
+- Receipt scan from camera or image
 - Budget and goal tracking
-- Subscription and bill reminders
-- Debt and investment tracking
-- Net worth trends
-- AI-assisted categorization and insights
-- Cross-device sync with Supabase
+- Spending patterns and recent merchants
+- Activity export as CSV
+- Guarded activity deletion
+- Cross-device account sync
 
-Pennyrush has no ads and no tracking SDKs.
+PennyRush has no ads and no tracking SDKs.

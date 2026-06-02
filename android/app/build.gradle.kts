@@ -11,6 +11,17 @@ val localProperties = Properties().apply {
 fun localOrEnv(name: String): String =
     localProperties.getProperty(name) ?: providers.environmentVariable(name).orNull ?: ""
 
+val releaseStoreFile = localOrEnv("PENNYRUSH_RELEASE_STORE_FILE")
+val releaseStorePassword = localOrEnv("PENNYRUSH_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = localOrEnv("PENNYRUSH_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = localOrEnv("PENNYRUSH_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it.isNotBlank() }
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -33,6 +44,26 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localOrEnv("PENNYRUSH_SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "SUPABASE_AUTH_SCHEME", "\"pennyrush\"")
         buildConfigField("String", "SUPABASE_AUTH_HOST", "\"auth-callback\"")
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     compileOptions {
