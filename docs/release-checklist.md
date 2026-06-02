@@ -14,6 +14,7 @@ Use this checklist before shipping a public Android or web release.
   - Android callback: `pennyrush://auth-callback`
 - Publish the web app at the domain used in Android policy links, currently `https://pennyrush.dev`.
 - Confirm `/privacy` and `/terms` are reachable on the deployed web domain.
+- Confirm `/robots.txt`, `/sitemap.xml`, and core security headers are present on the deployed web domain.
 
 ## Android Signing
 
