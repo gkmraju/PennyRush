@@ -15,17 +15,25 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { label: "Home", icon: Home, active: true },
-  { label: "Transactions", icon: ReceiptText },
-  { label: "Budgets", icon: BarChart3 },
-  { label: "Goals", icon: Target },
-  { label: "Subscriptions", icon: Bell },
-  { label: "Net Worth", icon: LineChart },
-  { label: "Accounts", icon: Landmark },
-  { label: "Settings", icon: Settings },
+  { label: "Home", icon: Home, key: "home" },
+  { label: "Activity", icon: ReceiptText, key: "activity" },
+  { label: "Plan", icon: BarChart3, key: "plan" },
+  { label: "Goals", icon: Target, key: "plan" },
+  { label: "Insights", icon: Bell, key: "insights" },
+  { label: "Net Worth", icon: LineChart, key: "home" },
+  { label: "Accounts", icon: Landmark, key: "account" },
+  { label: "Settings", icon: Settings, key: "account" },
 ];
 
-export function AppSidebar() {
+export type SidebarDestination = "home" | "activity" | "plan" | "insights" | "account";
+
+export function AppSidebar({
+  active = "home",
+  onNavigate,
+}: {
+  active?: SidebarDestination;
+  onNavigate?: (destination: SidebarDestination) => void;
+}) {
   return (
     <aside className="hidden min-h-screen w-72 shrink-0 border-r border-border/55 px-5 py-6 lg:block">
       <div className="flex items-center gap-3">
@@ -44,8 +52,9 @@ export function AppSidebar() {
             key={item.label}
             className={cn(
               "flex h-11 w-full items-center gap-3 rounded-chip px-3 text-sm font-semibold text-muted-foreground transition duration-300 ease-in-out hover:bg-muted hover:text-foreground",
-              item.active && "bg-muted text-foreground",
+              active === item.key && "bg-muted text-foreground",
             )}
+            onClick={() => onNavigate?.(item.key as SidebarDestination)}
             type="button"
           >
             <item.icon className="h-4 w-4" aria-hidden="true" />

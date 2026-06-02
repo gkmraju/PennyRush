@@ -87,6 +87,27 @@ export function buildSpending(rows: TransactionRow[]): SpendingSlice[] {
     }));
 }
 
+export function buildTransactionsCsv(rows: TransactionRow[]) {
+  const header = ["Date", "Merchant", "Category", "Amount", "Type", "Source", "Note"].join(",");
+  const body = [...rows]
+    .sort((a, b) => `${b.date}${b.created_at}`.localeCompare(`${a.date}${a.created_at}`))
+    .map((row) =>
+      [
+        row.date,
+        row.merchant ?? "",
+        row.category?.name ?? "",
+        row.type === "expense" ? -Math.abs(Number(row.amount)) : Number(row.amount),
+        row.type,
+        row.source,
+        row.note ?? "",
+      ]
+        .map(escapeCsvCell)
+        .join(","),
+    );
+
+  return [header, ...body].join("\n");
+}
+
 function signedAmount(row: TransactionRow) {
   const amount = Number(row.amount);
   if (row.type === "expense") return -amount;
@@ -120,4 +141,9 @@ function labelForSource(source: TransactionRow["source"]) {
   if (source === "voice") return "Voice";
   if (source === "sms") return "SMS";
   return "Manual";
+}
+
+function escapeCsvCell(value: string | number) {
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll("\"", "\"\"")}"` : text;
 }

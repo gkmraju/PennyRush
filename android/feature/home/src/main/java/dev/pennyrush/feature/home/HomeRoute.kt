@@ -714,6 +714,7 @@ fun HomeRoute(
                 userEmail = userEmail,
                 userName = userName,
                 userAvatarUrl = userAvatarUrl,
+                sync = sync,
                 onImportStatement = openImport,
                 onScanReceipt = openReceiptScan,
                 notificationsAllowed = notificationsAllowed,
@@ -3619,6 +3620,7 @@ private fun AccountContent(
     userEmail: String?,
     userName: String?,
     userAvatarUrl: String?,
+    sync: TransactionsSync,
     onImportStatement: () -> Unit,
     onScanReceipt: () -> Unit,
     notificationsAllowed: Boolean,
@@ -3637,6 +3639,8 @@ private fun AccountContent(
     val transactions = TransactionsStore.transactions
 
     var versionDialog by remember { mutableStateOf(false) }
+    var deleteActivityDialog by remember { mutableStateOf(false) }
+    var deletingActivity by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv"),
@@ -3802,12 +3806,9 @@ private fun AccountContent(
                 SettingsDivider()
                 SettingsRow(
                     icon = Icons.Rounded.DeleteSweep,
-                    title = "Reset downloaded data",
-                    subtitle = "Reload your latest data on next launch",
-                    onClick = {
-                        TransactionsStore.clear()
-                        toast("Downloaded data cleared")
-                    },
+                    title = "Delete activity",
+                    subtitle = "Permanently remove every saved entry",
+                    onClick = { deleteActivityDialog = true },
                 )
             }
         }
@@ -3964,6 +3965,71 @@ private fun AccountContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            },
+            shape = CardShape,
+        )
+    }
+
+    if (deleteActivityDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!deletingActivity) deleteActivityDialog = false
+            },
+            confirmButton = {
+                Button(
+                    enabled = !deletingActivity,
+                    onClick = {
+                        val ids = TransactionsStore.transactions.map { it.id }
+                        if (ids.isEmpty()) {
+                            deleteActivityDialog = false
+                            toast("No activity to delete")
+                            return@Button
+                        }
+                        deletingActivity = true
+                        scope.launch {
+                            val outcome = runCatching {
+                                if (sync.enabled) {
+                                    ids.forEach { sync.deleteOne(it) }
+                                }
+                            }
+                            deletingActivity = false
+                            outcome
+                                .onSuccess {
+                                    TransactionsStore.clear()
+                                    deleteActivityDialog = false
+                                    Toast.makeText(context, "Activity deleted", Toast.LENGTH_LONG).show()
+                                }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Couldn't delete activity: ${it.message ?: "unknown error"}",
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = palette.expense,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Text(if (deletingActivity) "Deleting..." else "Delete activity")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !deletingActivity,
+                    onClick = { deleteActivityDialog = false },
+                ) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Delete all activity?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "This permanently removes every activity entry from PennyRush. Export a CSV first if you want a copy.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             },
             shape = CardShape,
         )
