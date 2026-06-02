@@ -1,0 +1,1 @@
+Initial PennyRush release with activity tracking, CSV import, receipt scan, budgets, goals, insights, export, and privacy controls.
