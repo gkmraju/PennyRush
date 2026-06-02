@@ -52,6 +52,7 @@ export function HomeDashboard() {
   const [manualOpen, setManualOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SidebarDestination>("home");
   const [deletingActivity, setDeletingActivity] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const refreshDashboard = useCallback(
     async (showLoading = false) => {
@@ -150,6 +151,25 @@ export function HomeDashboard() {
     }
     await refreshDashboard(false);
     setDeletingActivity(false);
+  }
+
+  async function deleteAccount() {
+    const confirmed = window.prompt("Type DELETE ACCOUNT to permanently delete your PennyRush account and saved app data.");
+    if (confirmed !== "DELETE ACCOUNT") return;
+
+    setDeletingAccount(true);
+    setError(null);
+    const response = await fetch("/api/account/delete", { method: "POST" });
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+
+    if (!response.ok) {
+      setError(payload?.error ?? "Could not delete your account.");
+      setDeletingAccount(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+    window.location.assign("/");
   }
 
   function afterMutation() {
@@ -264,9 +284,11 @@ export function HomeDashboard() {
               <AccountDataPanel
                 currency={profile.currency}
                 deleting={deletingActivity}
+                deletingAccount={deletingAccount}
                 entryCount={rows.length}
                 error={error}
                 locale={profile.locale}
+                onDeleteAccount={deleteAccount}
                 onDeleteAll={deleteAllActivity}
                 onExport={exportActivity}
                 rows={rows}
@@ -397,18 +419,22 @@ function SecondaryActionCard({ onImport, onScan }: { onImport: () => void; onSca
 function AccountDataPanel({
   currency,
   deleting,
+  deletingAccount,
   entryCount,
   error,
   locale,
+  onDeleteAccount,
   onDeleteAll,
   onExport,
   rows,
 }: {
   currency: string;
   deleting: boolean;
+  deletingAccount: boolean;
   entryCount: number;
   error: string | null;
   locale: string;
+  onDeleteAccount: () => void;
   onDeleteAll: () => void;
   onExport: () => void;
   rows: TransactionRow[];
@@ -463,6 +489,17 @@ function AccountDataPanel({
         <Button disabled={entryCount === 0 || deleting} onClick={onDeleteAll} type="button" variant="danger">
           <Trash2 className="h-4 w-4" aria-hidden="true" />
           {deleting ? "Deleting..." : "Delete activity"}
+        </Button>
+      </div>
+
+      <div className="mt-5 rounded-card border border-danger/25 bg-danger/10 p-4">
+        <h3 className="text-sm font-bold text-danger">Delete account</h3>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Permanently remove your PennyRush account and saved app data. Export a CSV first if you need a copy.
+        </p>
+        <Button className="mt-4" disabled={deletingAccount} onClick={onDeleteAccount} type="button" variant="danger">
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          {deletingAccount ? "Deleting account..." : "Delete account"}
         </Button>
       </div>
     </section>
