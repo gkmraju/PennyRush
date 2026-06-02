@@ -30,6 +30,9 @@ jobs:
       - name: Audit dependencies
         run: npm audit
 
+      - name: Audit release configuration
+        run: npm run release:audit-config
+
       - name: Test parser helpers
         run: npm run web:test
 

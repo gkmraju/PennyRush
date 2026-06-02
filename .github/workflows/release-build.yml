@@ -36,6 +36,9 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
+      - name: Audit release configuration
+        run: npm run release:audit-config
+
       - name: Require release signing secrets
         run: npm run release:check-env
         env:
@@ -43,6 +46,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           PENNYRUSH_SUPABASE_URL: ${{ secrets.PENNYRUSH_SUPABASE_URL }}
           PENNYRUSH_SUPABASE_ANON_KEY: ${{ secrets.PENNYRUSH_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PENNYRUSH_RELEASE_KEYSTORE_BASE64: ${{ secrets.PENNYRUSH_RELEASE_KEYSTORE_BASE64 }}
           PENNYRUSH_RELEASE_STORE_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_STORE_PASSWORD }}
           PENNYRUSH_RELEASE_KEY_ALIAS: ${{ secrets.PENNYRUSH_RELEASE_KEY_ALIAS }}
