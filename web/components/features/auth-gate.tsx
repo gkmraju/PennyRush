@@ -67,6 +67,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             <LogIn className="mr-2 size-4" />
             Continue with Google
           </Button>
+          <p className="text-center text-xs leading-5 text-muted-foreground">
+            By continuing, you agree to the{" "}
+            <a className="font-semibold text-foreground underline-offset-4 hover:underline" href="/terms">
+              Terms
+            </a>{" "}
+            and{" "}
+            <a className="font-semibold text-foreground underline-offset-4 hover:underline" href="/privacy">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </section>
       </main>
     );

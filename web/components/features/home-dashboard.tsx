@@ -449,13 +449,13 @@ function AccountDataPanel({
           Export CSV
         </Button>
         <Button asChild type="button" variant="secondary">
-          <a href="https://pennyrush.dev/privacy" rel="noreferrer" target="_blank">
+          <a href="/privacy">
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             Privacy
           </a>
         </Button>
         <Button asChild type="button" variant="secondary">
-          <a href="https://pennyrush.dev/terms" rel="noreferrer" target="_blank">
+          <a href="/terms">
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             Terms
           </a>
