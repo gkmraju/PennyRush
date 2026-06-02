@@ -1,8 +1,16 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { transactions } from "@/lib/sample-data";
+import type { DashboardTransaction } from "@/lib/transactions";
 import { formatCurrency } from "@/lib/utils";
 
-export function RecentTransactions() {
+export function RecentTransactions({
+  transactions,
+  currency,
+  locale,
+}: {
+  transactions: DashboardTransaction[];
+  currency?: string;
+  locale?: string;
+}) {
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -12,6 +20,11 @@ export function RecentTransactions() {
         </button>
       </div>
       <div className="space-y-3">
+        {transactions.length === 0 ? (
+          <div className="rounded-card bg-muted p-5 text-sm leading-6 text-muted-foreground">
+            No transactions yet. Add one from Android or import a CSV to see live activity here.
+          </div>
+        ) : null}
         {transactions.map((transaction) => {
           const positive = transaction.amount > 0;
           const Icon = positive ? ArrowDownLeft : ArrowUpRight;
@@ -26,13 +39,13 @@ export function RecentTransactions() {
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-bold">{transaction.merchant}</span>
-                <span className="mt-1 block truncate text-xs text-muted-foreground">
+                <span className="mt-1 block truncate text-sm text-muted-foreground">
                   {transaction.category} · {transaction.date}
                 </span>
               </span>
               <span className={`tabular text-sm font-bold ${positive ? "text-success" : "text-foreground"}`}>
                 {positive ? "+" : ""}
-                {formatCurrency(transaction.amount)}
+                {formatCurrency(transaction.amount, currency, locale)}
               </span>
             </button>
           );

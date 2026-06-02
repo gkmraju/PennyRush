@@ -27,16 +27,16 @@ object StatementParser {
 
         if (looksBinary(text)) {
             return ParseOutcome.Failed(
-                "This doesn't look like a text file. Export your statement as CSV from your bank.",
+                "This doesn't look like a readable statement file. Download a spreadsheet version from your bank and try again.",
                 emptyList(),
             )
         }
 
         val raw = text.lines().map { it.trim() }.filter { it.isNotBlank() }
-        if (raw.isEmpty()) return ParseOutcome.Failed("File has no readable rows.", emptyList())
+        if (raw.isEmpty()) return ParseOutcome.Failed("File has no readable entries.", emptyList())
         if (raw.size > MAX_LINES) {
             return ParseOutcome.Failed(
-                "File has ${raw.size} lines, which is too long to be a statement (cap is $MAX_LINES).",
+                "This file is too large for a quick import. Try a shorter statement.",
                 raw.take(6),
             )
         }
@@ -60,7 +60,7 @@ object StatementParser {
         }
         if (headerIdx < 0) {
             return ParseOutcome.Failed(
-                "Couldn't find a recognizable header. Expected columns like Date, Description, Amount (or Debit/Credit).",
+                "Couldn't find the statement columns. Look for Date, Description, Amount, Debit, or Credit.",
                 raw.take(6),
             )
         }
@@ -84,7 +84,7 @@ object StatementParser {
 
         if (amountIdx < 0 && (debitIdx < 0 || creditIdx < 0)) {
             return ParseOutcome.Failed(
-                "No amount column found (need either Amount, or Debit + Credit / Withdrawal + Deposit).",
+                "Couldn't find an amount column. Look for Amount, Debit, Credit, Withdrawal, or Deposit.",
                 raw.take(6),
             )
         }
@@ -108,7 +108,7 @@ object StatementParser {
             val description = descIdx.takeIf { it >= 0 }
                 ?.let { cells.getOrNull(it) }
                 ?.takeIf { it.isNotBlank() }
-                ?: "Transaction"
+                ?: "Imported entry"
 
             val amount = when {
                 amountIdx >= 0 -> parseAmount(cells.getOrNull(amountIdx))
@@ -140,8 +140,8 @@ object StatementParser {
         if (parsed.isEmpty()) {
             val hint = when {
                 skippedDates > 0 -> "All dates fell outside the accepted range (within 50 years past, 10 years future)."
-                skippedAmounts > 0 -> "All amounts exceeded the sanity cap."
-                else -> "Header looked right, but no rows could be parsed as transactions."
+                skippedAmounts > 0 -> "All amounts were above the supported import limit."
+                else -> "The columns looked right, but no entries could be turned into activity."
             }
             return ParseOutcome.Failed(hint, raw.take(6))
         }
@@ -165,8 +165,14 @@ object StatementParser {
         val out = mutableListOf<String>()
         val current = StringBuilder()
         var inQuotes = false
-        for (ch in line) {
+        var index = 0
+        while (index < line.length) {
+            val ch = line[index]
             when {
+                ch == '"' && inQuotes && line.getOrNull(index + 1) == '"' -> {
+                    current.append('"')
+                    index++
+                }
                 ch == '"' -> inQuotes = !inQuotes
                 ch == ',' && !inQuotes -> {
                     out += current.toString().trim()
@@ -174,6 +180,7 @@ object StatementParser {
                 }
                 else -> current.append(ch)
             }
+            index++
         }
         out += current.toString().trim()
         return out

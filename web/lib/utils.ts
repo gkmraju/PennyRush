@@ -6,15 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: number, currency = "USD", locale = "en-US") {
+  const hasCents = Math.abs(value % 1) > 0;
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
   }).format(value);
 }
 
-export function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatDate(value: Date, locale = "en-US") {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "long",
     month: "short",
     day: "numeric",

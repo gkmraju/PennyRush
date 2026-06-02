@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("inline-flex h-8 items-center rounded-chip bg-muted px-3 text-xs font-semibold text-muted-foreground", className)}
+      className={cn("inline-flex min-h-8 items-center rounded-chip bg-muted px-3 text-sm font-semibold text-muted-foreground", className)}
       {...props}
     />
   );

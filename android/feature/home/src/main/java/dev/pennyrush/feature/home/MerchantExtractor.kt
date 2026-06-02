@@ -99,7 +99,18 @@ object MerchantExtractor {
         if (input.any { it.isLowerCase() }) return input.trim()
         return input.split(" ").joinToString(" ") { word ->
             if (word.length <= 3) word.uppercase()
-            else word.lowercase().replaceFirstChar { it.uppercase() }
+            else titleCaseWord(word)
+        }
+    }
+
+    private fun titleCaseWord(word: String): String {
+        val lower = word.lowercase()
+        val firstLetter = lower.indexOfFirst { it.isLetter() }
+        if (firstLetter < 0) return lower
+        return buildString(lower.length) {
+            append(lower.substring(0, firstLetter))
+            append(lower[firstLetter].uppercaseChar())
+            append(lower.substring(firstLetter + 1))
         }
     }
 }

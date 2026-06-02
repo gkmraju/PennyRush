@@ -9,4 +9,6 @@ class TransactionsSync(
     val loadAll: suspend () -> List<Transaction> = { emptyList() },
     val persistOne: suspend (Transaction) -> Transaction = { it },
     val persistBatch: suspend (List<Transaction>) -> List<Transaction> = { it },
+    val updateOne: suspend (Transaction) -> Transaction = { it },
+    val deleteOne: suspend (String) -> Unit = {},
 )

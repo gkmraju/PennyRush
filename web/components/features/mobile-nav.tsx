@@ -30,7 +30,7 @@ function MobileNavItem({
 }) {
   return (
     <button
-      className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-chip text-[11px] font-semibold text-muted-foreground data-[active=true]:text-foreground"
+      className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-chip text-xs font-semibold text-muted-foreground data-[active=true]:text-foreground"
       data-active={active}
       type="button"
     >

@@ -3,6 +3,7 @@ package dev.pennyrush.core.designsystem
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -10,40 +11,73 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 
-private val Emerald = Color(0xFF10B981)
-private val EmeraldDeep = Color(0xFF059669)
-private val Ink = Color(0xFF0F172A)
-private val InkSoft = Color(0xFF1E293B)
-private val Cloud = Color(0xFFF8FAFC)
-private val Mist = Color(0xFFF1F5F9)
+private val Leaf = Color(0xFF047857)
+private val LeafDeep = Color(0xFF064E3B)
+private val Ocean = Color(0xFF2563EB)
+private val Coral = Color(0xFFE0523F)
+private val Ink = Color(0xFF17211D)
+private val InkSoft = Color(0xFF121A17)
+private val Canvas = Color(0xFFF6FAF7)
+private val Panel = Color(0xFFFFFFFF)
+private val Field = Color(0xFFEAF2ED)
+private val MutedText = Color(0xFF52645B)
+private val MutedTextDark = Color(0xFFC0CDC6)
 
 private val LightColors = lightColorScheme(
-    primary = Emerald,
+    primary = Leaf,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD1FAE5),
-    onPrimaryContainer = Color(0xFF064E3B),
-    background = Cloud,
+    primaryContainer = Color(0xFFDDFBEF),
+    onPrimaryContainer = LeafDeep,
+    secondary = Ocean,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDDE8FF),
+    onSecondaryContainer = Color(0xFF163A8A),
+    tertiary = Coral,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFE1D8),
+    onTertiaryContainer = Color(0xFF7A2519),
+    background = Canvas,
     onBackground = Ink,
-    surface = Color.White,
+    surface = Panel,
     onSurface = Ink,
-    surfaceVariant = Mist,
-    onSurfaceVariant = Color(0xFF64748B),
-    outline = Color(0xFFE2E8F0),
+    surfaceVariant = Field,
+    onSurfaceVariant = MutedText,
+    outline = Color(0xFFCAD8D0),
+    error = Color(0xFFBE123C),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Emerald,
-    onPrimary = Color.White,
-    primaryContainer = EmeraldDeep,
-    onPrimaryContainer = Color(0xFFD1FAE5),
-    background = Ink,
-    onBackground = Cloud,
+    primary = Color(0xFF74E3B5),
+    onPrimary = Color(0xFF063323),
+    primaryContainer = Color(0xFF0C4936),
+    onPrimaryContainer = Color(0xFFDDFBEF),
+    secondary = Color(0xFF9EC5FF),
+    onSecondary = Color(0xFF0E285F),
+    secondaryContainer = Color(0xFF173A80),
+    onSecondaryContainer = Color(0xFFDDE8FF),
+    tertiary = Color(0xFFFFB29F),
+    onTertiary = Color(0xFF54160D),
+    tertiaryContainer = Color(0xFF7A2519),
+    onTertiaryContainer = Color(0xFFFFE1D8),
+    background = Color(0xFF0B1110),
+    onBackground = Color(0xFFEFF7F1),
     surface = InkSoft,
-    onSurface = Cloud,
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF334155),
+    onSurface = Color(0xFFEFF7F1),
+    surfaceVariant = Color(0xFF1B2621),
+    onSurfaceVariant = MutedTextDark,
+    outline = Color(0xFF40524A),
+    error = Color(0xFFFF8A9A),
+)
+
+private val PennyrushShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @Composable
@@ -64,6 +98,7 @@ fun PennyrushTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = PennyrushTypography,
+        shapes = PennyrushShapes,
         content = content,
     )
 }

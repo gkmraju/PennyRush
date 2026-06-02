@@ -19,6 +19,17 @@ object TransactionsStore {
         items.addAll(transactions)
     }
 
+    fun update(transaction: Transaction) {
+        val index = items.indexOfFirst { it.id == transaction.id }
+        if (index >= 0) {
+            items[index] = transaction
+        }
+    }
+
+    fun delete(id: String) {
+        items.removeAll { it.id == id }
+    }
+
     fun addAll(transactions: List<Transaction>): AddResult {
         val existing = items.mapTo(HashSet()) { it.dedupKey() }
         var added = 0

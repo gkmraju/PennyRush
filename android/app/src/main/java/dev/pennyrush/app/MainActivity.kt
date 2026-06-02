@@ -36,12 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,6 +48,7 @@ import dev.pennyrush.core.designsystem.PennyrushTheme
 import dev.pennyrush.core.designsystem.ThemeMode
 import dev.pennyrush.core.designsystem.ThemePreferences
 import dev.pennyrush.feature.home.HomeRoute
+import dev.pennyrush.feature.home.PlanningSync
 import dev.pennyrush.feature.home.TransactionsSync
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
@@ -109,11 +107,13 @@ private fun PennyrushApp() {
         is SessionStatus.Authenticated -> {
             val userId = status.session.user?.id
             val sync = remember(userId) { syncFor(repo, userId) }
+            val planningSync = remember(userId) { planningSyncFor(repo, userId) }
             HomeRoute(
                 userEmail = status.session.user?.email,
                 userName = status.session.user?.metaString("full_name", "name"),
                 userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
                 sync = sync,
+                planningSync = planningSync,
                 onSignOut = {
                     supabase.auth.signOut()
                 },
@@ -151,7 +151,7 @@ private fun GoogleSignInRoute() {
                 text = "PennyRush",
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.5).sp,
+                    letterSpacing = 0.sp,
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -208,7 +208,7 @@ private fun GoogleSignInRoute() {
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Your data syncs securely across devices.",
+                text = "Your money data stays backed up across devices.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -227,6 +227,20 @@ private fun syncFor(repo: TransactionsRepository, userId: String?): Transactions
         loadAll = { repo.listForUser(userId) },
         persistOne = { repo.insertOne(userId, ensureAccount(), it) },
         persistBatch = { repo.insertBatch(userId, ensureAccount(), it) },
+        updateOne = { repo.updateOne(userId, it) },
+        deleteOne = { repo.deleteOne(userId, it) },
+    )
+}
+
+private fun planningSyncFor(repo: TransactionsRepository, userId: String?): PlanningSync {
+    if (userId.isNullOrBlank()) return PlanningSync()
+    return PlanningSync(
+        enabled = true,
+        loadBudgets = { repo.listBudgets(userId) },
+        saveBudget = { repo.saveBudget(userId, it) },
+        loadGoals = { repo.listGoals(userId) },
+        saveGoal = { repo.saveGoal(userId, it) },
+        deleteGoal = { repo.deleteGoal(userId, it) },
     )
 }
 
@@ -240,38 +254,11 @@ private fun UserInfo.metaString(vararg keys: String): String? {
 
 @Composable
 private fun SignInBackdrop() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF10B981).copy(alpha = 0.38f),
-                    Color.Transparent,
-                ),
-                center = Offset(size.width * 0.85f, size.height * 0.10f),
-                radius = size.width * 0.95f,
-            ),
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF06B6D4).copy(alpha = 0.22f),
-                    Color.Transparent,
-                ),
-                center = Offset(size.width * 0.05f, size.height * 0.92f),
-                radius = size.width * 0.85f,
-            ),
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF8B5CF6).copy(alpha = 0.12f),
-                    Color.Transparent,
-                ),
-                center = Offset(size.width * 0.50f, size.height * 0.50f),
-                radius = size.width * 0.55f,
-            ),
-        )
-    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    )
 }
 
 @Composable
@@ -280,21 +267,13 @@ private fun BrandMark() {
         modifier = Modifier
             .size(104.dp)
             .shadow(
-                elevation = 24.dp,
+                elevation = 6.dp,
                 shape = RoundedCornerShape(28.dp),
                 ambientColor = MaterialTheme.colorScheme.primary,
                 spotColor = MaterialTheme.colorScheme.primary,
             )
             .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF34D399),
-                        Color(0xFF10B981),
-                        Color(0xFF059669),
-                    ),
-                ),
-            ),
+            .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center,
     ) {
         Image(
@@ -314,11 +293,11 @@ private fun AuthSetupRequired() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Supabase auth is not configured",
+            text = "PennyRush needs setup",
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
-            text = "Add PENNYRUSH_SUPABASE_URL and PENNYRUSH_SUPABASE_ANON_KEY to android/local.properties, then rebuild the app.",
+            text = "This build is missing the secure connection settings. Add the Android configuration values and rebuild.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyLarge,
         )

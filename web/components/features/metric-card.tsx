@@ -7,11 +7,15 @@ export function MetricCard({
   value,
   delta,
   tone,
+  currency,
+  locale,
 }: {
   label: string;
   value: number;
   delta: string;
   tone: "income" | "expense" | "neutral";
+  currency?: string;
+  locale?: string;
 }) {
   const Icon = tone === "income" ? ArrowUpRight : tone === "expense" ? ArrowDownRight : Minus;
   const toneClass = tone === "income" ? "text-success" : tone === "expense" ? "text-danger" : "text-muted-foreground";
@@ -21,7 +25,7 @@ export function MetricCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="tabular mt-3 text-2xl font-bold tracking-normal">{formatCurrency(value)}</p>
+          <p className="tabular mt-3 text-2xl font-bold tracking-normal">{formatCurrency(value, currency, locale)}</p>
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted">
           <Icon className={`h-5 w-5 ${toneClass}`} aria-hidden="true" />
