@@ -56,8 +56,14 @@ import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,6 +120,7 @@ private fun PennyrushApp() {
                 userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
                 sync = sync,
                 planningSync = planningSync,
+                onDeleteAccount = { deleteAccount(status.session.accessToken, supabase) },
                 onSignOut = {
                     supabase.auth.signOut()
                 },
@@ -242,6 +249,28 @@ private fun planningSyncFor(repo: TransactionsRepository, userId: String?): Plan
         saveGoal = { repo.saveGoal(userId, it) },
         deleteGoal = { repo.deleteGoal(userId, it) },
     )
+}
+
+private suspend fun deleteAccount(accessToken: String, supabase: io.github.jan.supabase.SupabaseClient) {
+    val baseUrl = BuildConfig.WEB_BASE_URL.trim().trimEnd('/')
+    require(baseUrl.startsWith("https://")) { "Account deletion requires the secure web endpoint." }
+
+    val request = Request.Builder()
+        .url("$baseUrl/api/account/delete")
+        .header("Authorization", "Bearer $accessToken")
+        .post(ByteArray(0).toRequestBody("application/json".toMediaType()))
+        .build()
+
+    withContext(Dispatchers.IO) {
+        OkHttpClient().newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val body = response.body?.string()?.takeIf { it.isNotBlank() }
+                error(body ?: "Account deletion failed with HTTP ${response.code}")
+            }
+        }
+    }
+
+    supabase.auth.signOut()
 }
 
 private fun UserInfo.metaString(vararg keys: String): String? {

@@ -40,7 +40,7 @@ const sections = [
     body: [
       "You can export activity as a CSV file from the Account and data section.",
       "You can delete all saved activity entries from the app. Deleting activity removes the entries used by the dashboard, activity list, imports, and insights.",
-      "You can also delete your PennyRush account from the web Account and data tools. Account deletion removes your PennyRush authentication record and saved app data, but it does not delete your Google account.",
+      "You can also delete your PennyRush account from the web or Android Account and data tools. Account deletion removes your PennyRush authentication record and saved app data, but it does not delete your Google account.",
     ],
   },
   {

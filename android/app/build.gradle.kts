@@ -44,6 +44,7 @@ android {
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localOrEnv("PENNYRUSH_SUPABASE_ANON_KEY")}\"")
         buildConfigField("String", "SUPABASE_AUTH_SCHEME", "\"pennyrush\"")
         buildConfigField("String", "SUPABASE_AUTH_HOST", "\"auth-callback\"")
+        buildConfigField("String", "WEB_BASE_URL", "\"${localOrEnv("PENNYRUSH_WEB_BASE_URL").ifBlank { "https://pennyrush.dev" }}\"")
     }
 
     signingConfigs {

@@ -444,6 +444,7 @@ fun HomeRoute(
     userAvatarUrl: String? = null,
     sync: TransactionsSync = TransactionsSync(),
     planningSync: PlanningSync = PlanningSync(),
+    onDeleteAccount: suspend () -> Unit = {},
     onSignOut: suspend () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -719,6 +720,7 @@ fun HomeRoute(
                 onScanReceipt = openReceiptScan,
                 notificationsAllowed = notificationsAllowed,
                 onRequestNotifications = requestNotifications,
+                onDeleteAccount = onDeleteAccount,
                 onSignOut = onSignOut,
                 modifier = screenModifier,
             )
@@ -3625,6 +3627,7 @@ private fun AccountContent(
     onScanReceipt: () -> Unit,
     notificationsAllowed: Boolean,
     onRequestNotifications: () -> Unit,
+    onDeleteAccount: suspend () -> Unit,
     onSignOut: suspend () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -3641,6 +3644,9 @@ private fun AccountContent(
     var versionDialog by remember { mutableStateOf(false) }
     var deleteActivityDialog by remember { mutableStateOf(false) }
     var deletingActivity by remember { mutableStateOf(false) }
+    var deleteAccountDialog by remember { mutableStateOf(false) }
+    var deletingAccount by remember { mutableStateOf(false) }
+    var deleteAccountConfirmation by remember { mutableStateOf("") }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv"),
@@ -3809,6 +3815,16 @@ private fun AccountContent(
                     title = "Delete activity",
                     subtitle = "Permanently remove every saved entry",
                     onClick = { deleteActivityDialog = true },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Rounded.Lock,
+                    title = "Delete account",
+                    subtitle = "Remove your PennyRush account and saved app data",
+                    onClick = {
+                        deleteAccountConfirmation = ""
+                        deleteAccountDialog = true
+                    },
                 )
             }
         }
@@ -4030,6 +4046,75 @@ private fun AccountContent(
                     "This permanently removes every activity entry from PennyRush. Export a CSV first if you want a copy.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            },
+            shape = CardShape,
+        )
+    }
+
+    if (deleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!deletingAccount) deleteAccountDialog = false
+            },
+            confirmButton = {
+                Button(
+                    enabled = !deletingAccount && deleteAccountConfirmation == "DELETE ACCOUNT",
+                    onClick = {
+                        deletingAccount = true
+                        scope.launch {
+                            runCatching { onDeleteAccount() }
+                                .onSuccess {
+                                    TransactionsStore.clear()
+                                    deleteAccountDialog = false
+                                    Toast.makeText(context, "Account deleted", Toast.LENGTH_LONG).show()
+                                }
+                                .onFailure {
+                                    deletingAccount = false
+                                    Toast.makeText(
+                                        context,
+                                        "Couldn't delete account: ${it.message ?: "unknown error"}",
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = palette.expense,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Text(if (deletingAccount) "Deleting..." else "Delete account")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !deletingAccount,
+                    onClick = { deleteAccountDialog = false },
+                ) {
+                    Text("Cancel")
+                }
+            },
+            title = { Text("Delete PennyRush account?", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "This permanently removes your PennyRush account and saved app data. It does not delete your Google account. Export your activity first if you need a copy.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = deleteAccountConfirmation,
+                        onValueChange = { deleteAccountConfirmation = it },
+                        enabled = !deletingAccount,
+                        singleLine = true,
+                        label = { Text("Type DELETE ACCOUNT") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        shape = InputShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = palette.expense,
+                            focusedLabelColor = palette.expense,
+                        ),
+                    )
+                }
             },
             shape = CardShape,
         )

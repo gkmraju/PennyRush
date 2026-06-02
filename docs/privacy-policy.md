@@ -26,7 +26,7 @@ PennyRush uses Supabase Auth and authenticated database access. All production r
 
 ## Data Controls
 
-You can export activity as a CSV file from the app. You can delete saved activity entries from the Account and data tools. The web Account and data tools also include a guarded account deletion flow that removes your PennyRush account and saved app data.
+You can export activity as a CSV file from the app. You can delete saved activity entries from the Account and data tools. Web and Android also include a guarded account deletion flow that removes your PennyRush account and saved app data.
 
 ## Tracking And Ads
 

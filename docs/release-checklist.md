@@ -15,7 +15,7 @@ Use this checklist before shipping a public Android or web release.
 - Publish the web app at the domain used in Android policy links, currently `https://pennyrush.dev`.
 - Confirm `/privacy` and `/terms` are reachable on the deployed web domain.
 - Confirm `/robots.txt`, `/sitemap.xml`, and core security headers are present on the deployed web domain.
-- Confirm web account deletion is enabled with `SUPABASE_SERVICE_ROLE_KEY` and tested on a throwaway account.
+- Confirm web and Android account deletion are enabled with `SUPABASE_SERVICE_ROLE_KEY` and tested on a throwaway account.
 
 ## Android Signing
 
@@ -86,7 +86,7 @@ Manual QA:
 - Scan a receipt with camera and image picker.
 - Export CSV from Android and web.
 - Delete activity only after confirming export works.
-- Delete a throwaway web account and confirm the user cannot sign back in to the deleted PennyRush account without re-creating it.
+- Delete a throwaway account from web and Android and confirm the user cannot sign back in to the deleted PennyRush account without re-creating it.
 - Check light and dark mode on a small Android device.
 - Confirm notification permission, budget alerts, and big-spend alert toggles.
 
