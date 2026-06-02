@@ -27,6 +27,7 @@ const requiredFiles = [
   "docs/play-data-safety.md",
   "docs/privacy-policy.md",
   "docs/release-checklist.md",
+  "scripts/run-release-verify.mjs",
   "web/app/api/account/delete/route.ts",
   "web/app/manifest.ts",
   "web/app/privacy/page.tsx",
@@ -101,6 +102,7 @@ const checks = [
   {
     file: "docs/release-checklist.md",
     values: [
+      "npm run release:verify",
       "Upload a signed AAB",
       "docs/play-data-safety.md",
       "Delete a throwaway account",
@@ -117,6 +119,18 @@ const checks = [
       "Raw CSV statement files are not uploaded",
       "POST_NOTIFICATIONS",
       "does not request SMS",
+    ],
+  },
+  {
+    file: "scripts/run-release-verify.mjs",
+    values: [
+      "release:audit-config",
+      "web:test",
+      "web:lint",
+      "web:typecheck",
+      "web:build",
+      ":app:compileDebugKotlin",
+      ":app:bundleRelease",
     ],
   },
 ];

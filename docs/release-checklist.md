@@ -68,14 +68,7 @@ Run these before tagging or uploading a build:
 ```bash
 source .env.local
 npm run release:check-env
-npm audit
-npm run web:test
-npm run web:lint
-npm run web:typecheck
-npm run web:build
-cd android
-./gradlew :app:compileDebugKotlin
-./gradlew :feature:home:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+npm run release:verify
 ```
 
 Manual QA:
