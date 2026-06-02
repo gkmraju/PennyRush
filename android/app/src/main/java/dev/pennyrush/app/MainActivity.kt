@@ -118,6 +118,7 @@ private fun PennyrushApp() {
                 userEmail = status.session.user?.email,
                 userName = status.session.user?.metaString("full_name", "name"),
                 userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
+                appVersion = BuildConfig.VERSION_NAME,
                 sync = sync,
                 planningSync = planningSync,
                 onDeleteAccount = { deleteAccount(status.session.accessToken, supabase) },

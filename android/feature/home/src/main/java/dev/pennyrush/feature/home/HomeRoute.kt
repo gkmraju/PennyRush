@@ -442,6 +442,7 @@ fun HomeRoute(
     userEmail: String? = null,
     userName: String? = null,
     userAvatarUrl: String? = null,
+    appVersion: String = "1.0.0",
     sync: TransactionsSync = TransactionsSync(),
     planningSync: PlanningSync = PlanningSync(),
     onDeleteAccount: suspend () -> Unit = {},
@@ -715,6 +716,7 @@ fun HomeRoute(
                 userEmail = userEmail,
                 userName = userName,
                 userAvatarUrl = userAvatarUrl,
+                appVersion = appVersion,
                 sync = sync,
                 onImportStatement = openImport,
                 onScanReceipt = openReceiptScan,
@@ -3622,6 +3624,7 @@ private fun AccountContent(
     userEmail: String?,
     userName: String?,
     userAvatarUrl: String?,
+    appVersion: String,
     sync: TransactionsSync,
     onImportStatement: () -> Unit,
     onScanReceipt: () -> Unit,
@@ -3910,7 +3913,7 @@ private fun AccountContent(
                     icon = Icons.Rounded.Info,
                     title = "Version",
                     subtitle = "PennyRush for Android",
-                    trailing = { SettingsValue("0.1.0") },
+                    trailing = { SettingsValue(appVersion) },
                     onClick = { versionDialog = true },
                 )
                 SettingsDivider()
@@ -3973,7 +3976,7 @@ private fun AccountContent(
             title = { Text("PennyRush", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Version 0.1.0")
+                    Text("Version $appVersion")
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Android ${android.os.Build.VERSION.RELEASE} · ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
