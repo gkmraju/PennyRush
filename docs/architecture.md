@@ -1,36 +1,35 @@
-# Pennyrush Architecture
+# PennyRush Architecture
 
 ## High Level
 
-Pennyrush has two clients sharing one Supabase backend:
+PennyRush has two clients sharing one Supabase backend:
 
-- Android: Kotlin, Jetpack Compose, Material 3, Room as cache, WorkManager for queued sync.
-- Web: Next.js App Router, TypeScript, Tailwind, Supabase SSR/client helpers. This scaffold uses patched Next 16 because current npm advisories mark the requested Next 14 line as vulnerable.
+- Android: Kotlin, Jetpack Compose, Material 3, local in-memory activity state, and Supabase-backed persistence when configured.
+- Web: Next.js App Router, TypeScript, Tailwind, Supabase SSR/client helpers, CSV import, manual entries, export, and account controls.
 - Backend: Supabase Auth, Postgres with RLS, Realtime, and Edge Functions.
 
-Supabase is the source of truth. Local stores only cache data and hold offline write queues.
+Supabase is the source of truth for authenticated production use. Local client state exists to keep screens responsive and to support review flows before entries are saved.
 
 ## Upload Privacy Flow
 
-1. The user selects a PDF, CSV, or image.
+1. The user selects a CSV statement or receipt image.
 2. The client attempts local parsing first.
-3. If local parsing fails, the file is sent to an Edge Function over HTTPS.
-4. The function reads bytes in memory, extracts rows, and returns candidate transactions.
-5. The raw file is discarded and never persisted.
-6. The user reviews candidate rows before inserting transactions.
+3. The app extracts candidate entries in memory.
+4. The raw file is discarded by the client flow and never persisted to Supabase Storage.
+5. The user reviews candidate rows before inserting transactions.
 
 No Supabase Storage bucket is used by the app.
 
-## AI Flow
+## Categorization And Insights
 
-Categorization is intentionally hybrid:
+Current categorization is rules-based:
 
 1. Local keyword rules.
-2. Per-user learned merchant mappings.
-3. Server-side AI only for unknown merchants.
+2. Merchant extraction.
+3. Saved category data when available.
 
-Insights use aggregated summaries and avoid raw transaction details where possible. AI keys live only in Edge Function secrets.
+Insights use saved activity summaries and avoid raw file handling. If server-side AI is enabled later, provider keys must live only in server-side secrets and the privacy policy must be updated before release.
 
-## Realtime And Offline
+## Realtime And Reliability
 
-The clients subscribe to transaction, budget, goal, and insight changes. Writes are optimistic and resolved by `updated_at` with last-write-wins semantics. Android uses WorkManager for queued writes; web uses IndexedDB in a later slice.
+The web app subscribes to transaction changes and refreshes after imports. Android loads and persists entries through the app-level Supabase wiring when configured. Durable offline queues, conflict resolution, and background sync are future hardening items rather than current release guarantees.
