@@ -3256,7 +3256,7 @@ private fun InsightsContent(modifier: Modifier = Modifier) {
         item {
             ScreenTitle(
                 title = "Insights",
-                subtitle = "Cashflow signals from your activity",
+                subtitle = "Spending patterns from your activity",
                 modifier = Modifier.enterMotion(),
             )
         }
@@ -3264,7 +3264,7 @@ private fun InsightsContent(modifier: Modifier = Modifier) {
             item {
                 EmptyActivityCard(
                     "Insights need activity",
-                    "Add or import a few entries and PennyRush will surface cashflow signals here.",
+                    "Add or import a few entries and PennyRush will show useful spending patterns here.",
                     modifier = Modifier.enterMotion(70),
                 )
             }
@@ -3605,7 +3605,7 @@ private fun buildLocalInsights(transactions: List<Transaction>): List<FinanceIns
 
     if (insights.isEmpty()) {
         insights += FinanceInsight(
-            "More data needed",
+            "Add a little more activity",
             "Add or import a few more entries to unlock cashflow and recurring-spend insights.",
             InsightSeverity.Info,
         )

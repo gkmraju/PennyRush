@@ -59,8 +59,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               Every penny, in a rush to be tracked.
             </h1>
             <p className="text-base text-muted-foreground">
-              Sign in to sync your accounts, imports, insights, and budgets
-              across devices.
+              Sign in to keep your accounts, imports, insights, and budgets
+              ready across devices.
             </p>
           </div>
           <Button className="h-12 w-full" onClick={signInWithGoogle}>

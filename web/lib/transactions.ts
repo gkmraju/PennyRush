@@ -56,7 +56,7 @@ export function buildMetrics(rows: TransactionRow[]): DashboardMetrics {
 export function buildRecentTransactions(rows: TransactionRow[]): DashboardTransaction[] {
   return rows.slice(0, 8).map((row, index) => ({
     id: row.id,
-    merchant: row.merchant?.trim() || row.note?.trim() || "Transaction",
+    merchant: row.merchant?.trim() || row.note?.trim() || "Entry",
     category: row.category?.name ?? labelForSource(row.source),
     amount: signedAmount(row),
     date: formatRelativeDate(row.date),

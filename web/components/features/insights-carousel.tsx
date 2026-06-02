@@ -16,7 +16,7 @@ export function InsightsCarousel({ insights }: { insights: InsightRow[] }) {
       </div>
       {insights.length === 0 ? (
         <div className="rounded-card bg-card p-5 text-sm leading-6 text-muted-foreground shadow-soft ring-1 ring-border/55">
-          No live insights yet. Import a few transactions and PennyRush will have enough signal to generate useful nudges.
+          No insights yet. Import a few entries and PennyRush will show useful spending patterns here.
         </div>
       ) : (
         <div className="flex snap-x gap-4 overflow-x-auto pb-2">

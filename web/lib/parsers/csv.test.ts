@@ -84,7 +84,7 @@ test("shapes import insert payloads", () => {
     type: "expense",
     date: "2026-05-12",
     merchant: "Coffee Shop",
-    note: "Client-side CSV import",
+    note: "Statement import",
     source: "import",
     ai_confidence: 0.86,
     imported_hash: candidate.importedHash,

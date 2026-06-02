@@ -56,13 +56,13 @@ export function ImportCard({
 
     if (!isCsv(file)) {
       setStatus("error");
-      setMessage("Choose a CSV file exported from your bank.");
+      setMessage("Choose a statement file exported from your bank.");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       setStatus("error");
-      setMessage("This file is larger than 5 MB. Export a shorter CSV range and try again.");
+      setMessage("This file is larger than 5 MB. Export a shorter statement range and try again.");
       return;
     }
 
@@ -73,14 +73,14 @@ export function ImportCard({
 
     if (enriched.length === 0) {
       setStatus("empty");
-      setMessage(parsed.errors[0] ?? "No transaction rows were detected.");
+      setMessage(parsed.errors[0] ?? "No activity entries were detected.");
       return;
     }
 
     setStatus("parsed");
     setMessage(
       parsed.skippedRows > 0
-        ? `${parsed.skippedRows} row${parsed.skippedRows === 1 ? "" : "s"} skipped because date or amount was missing.`
+        ? `${parsed.skippedRows} entr${parsed.skippedRows === 1 ? "y was" : "ies were"} skipped because date or amount was missing.`
         : null,
     );
   }
@@ -94,7 +94,7 @@ export function ImportCard({
       const result = await saveImportCandidates(supabase, userId, profile, rows);
       setStatus("saved");
       setMessage(
-        `Imported ${result.inserted.length} transaction${result.inserted.length === 1 ? "" : "s"}${
+        `Imported ${result.inserted.length} ${result.inserted.length === 1 ? "entry" : "entries"}${
           result.duplicates > 0 ? ` and skipped ${result.duplicates} duplicate${result.duplicates === 1 ? "" : "s"}` : ""
         }.`,
       );
@@ -129,7 +129,7 @@ export function ImportCard({
         type="button"
       >
         <FileText className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
-        <span className="mt-3 text-sm font-bold">{fileName ?? "Drop a CSV or pick a file"}</span>
+        <span className="mt-3 text-sm font-bold">{fileName ?? "Drop a statement or pick a file"}</span>
         <span className="mt-2 max-w-xs text-xs leading-5 text-muted-foreground">
           Processed in memory and discarded, never stored.
         </span>
@@ -156,7 +156,7 @@ export function ImportCard({
       ) : null}
 
       {status === "error" || status === "empty" ? (
-        <Notice icon={XCircle} tone="error" message={message ?? "No transaction rows were detected."} />
+        <Notice icon={XCircle} tone="error" message={message ?? "No activity entries were detected."} />
       ) : null}
 
       {status === "saved" ? <Notice icon={CheckCircle2} tone="success" message={message ?? "Import complete."} /> : null}
@@ -202,7 +202,7 @@ export function ImportCard({
             </table>
           </div>
           <Button className="mt-4 w-full" disabled={!userId || newRows.length === 0 || status === "saving"} onClick={confirmImport} type="button">
-            {status === "saving" ? "Saving..." : `Confirm ${newRows.length} new row${newRows.length === 1 ? "" : "s"}`}
+            {status === "saving" ? "Saving..." : `Confirm ${newRows.length} new ${newRows.length === 1 ? "entry" : "entries"}`}
           </Button>
         </div>
       ) : null}

@@ -28,7 +28,7 @@ export function SpendingDonut({
 
       {spending.length === 0 ? (
         <div className="mt-6 flex h-56 items-center justify-center rounded-card bg-muted px-6 text-center text-sm leading-6 text-muted-foreground">
-          This month has no expense rows yet.
+          This month has no spend activity yet.
         </div>
       ) : (
         <div className="mt-6 h-56">

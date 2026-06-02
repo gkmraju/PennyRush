@@ -14,7 +14,7 @@ export function RecentTransactions({
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-bold">Recent transactions</h2>
+        <h2 className="text-xl font-bold">Latest activity</h2>
         <button className="text-sm font-semibold text-muted-foreground" type="button">
           See all
         </button>
@@ -22,7 +22,7 @@ export function RecentTransactions({
       <div className="space-y-3">
         {transactions.length === 0 ? (
           <div className="rounded-card bg-muted p-5 text-sm leading-6 text-muted-foreground">
-            No transactions yet. Add one from Android or import a CSV to see live activity here.
+            No activity yet. Add an entry or import a statement to see it here.
           </div>
         ) : null}
         {transactions.map((transaction) => {

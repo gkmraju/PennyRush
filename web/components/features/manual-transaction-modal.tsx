@@ -72,7 +72,7 @@ export function ManualTransactionModal({
       onSaved();
       onClose();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Could not save this transaction.");
+      setError(saveError instanceof Error ? saveError.message : "Could not save this entry.");
     } finally {
       setSaving(false);
     }
@@ -89,7 +89,7 @@ export function ManualTransactionModal({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground">Manual entry</p>
-            <h2 className="mt-1 text-xl font-bold">Add transaction</h2>
+            <h2 className="mt-1 text-xl font-bold">Add entry</h2>
           </div>
           <Button aria-label="Close" onClick={onClose} size="icon" type="button" variant="secondary">
             <X className="h-4 w-4" aria-hidden="true" />
@@ -190,7 +190,7 @@ export function ManualTransactionModal({
         {error ? <p className="mt-4 rounded-card bg-muted px-3 py-2 text-sm text-danger">{error}</p> : null}
 
         <Button className="mt-5 w-full" disabled={saving || !userId} type="submit">
-          {saving ? "Saving..." : "Save transaction"}
+          {saving ? "Saving..." : "Save entry"}
         </Button>
       </form>
     </div>

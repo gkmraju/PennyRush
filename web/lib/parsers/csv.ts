@@ -97,7 +97,7 @@ export function parseCsvImport(text: string): ParseCsvImportResult {
   if (rows.length < 2) {
     return {
       candidates: [],
-      errors: errors.length > 0 ? errors : ["CSV needs a header row and at least one transaction row."],
+      errors: errors.length > 0 ? errors : ["Statement needs a header and at least one activity entry."],
       headers: [],
       rawRows: rows.length,
       skippedRows: 0,
@@ -126,8 +126,8 @@ export function parseCsvImport(text: string): ParseCsvImportResult {
 
   for (const [index, row] of body.entries()) {
     const date = normalizeDate(row[mapping.date]);
-    const merchant = readableCell(row[mapping.merchant]) || readableCell(row[mapping.note]) || `Imported row ${index + 1}`;
-    const note = readableCell(row[mapping.note]) || "Client-side CSV import";
+    const merchant = readableCell(row[mapping.merchant]) || readableCell(row[mapping.note]) || `Imported entry ${index + 1}`;
+    const note = readableCell(row[mapping.note]) || "Statement import";
     const money = amountAndTypeFor(row, mapping);
 
     if (!date || !money || money.amount <= 0) {
@@ -170,7 +170,7 @@ export function buildImportDedupeKey(input: {
   merchant?: string | null;
   note?: string | null;
 }) {
-  const merchant = normalizeImportText(input.merchant || input.note || "transaction");
+  const merchant = normalizeImportText(input.merchant || input.note || "entry");
   const amount = Math.abs(Number(input.amount)).toFixed(2);
   return [input.date, amount, input.type, merchant].join("|");
 }
