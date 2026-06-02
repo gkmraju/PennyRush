@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">PennyRush icon</title>
+  <desc id="desc">Gold coin mark with a dark Pennyrush monogram.</desc>
+  <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
+  <circle cx="256" cy="256" r="158" fill="#F5B82E"/>
+  <circle cx="256" cy="256" r="124" fill="none" stroke="#0A0A0A" stroke-width="24" opacity=".18"/>
+  <path fill="#0A0A0A" d="M176 352V156h91c45 0 78 30 78 73 0 44-33 75-80 75h-39v48h-50Zm50-91h35c20 0 34-13 34-32 0-18-14-30-34-30h-35v62Zm142 91-61-86h57l64 86h-60Z"/>
+</svg>

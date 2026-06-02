@@ -36,6 +36,18 @@ jobs:
       - name: Install web dependencies
         run: npm ci
 
+      - name: Require release signing secrets
+        run: |
+          test -n "$PENNYRUSH_RELEASE_KEYSTORE_BASE64"
+          test -n "$PENNYRUSH_RELEASE_STORE_PASSWORD"
+          test -n "$PENNYRUSH_RELEASE_KEY_ALIAS"
+          test -n "$PENNYRUSH_RELEASE_KEY_PASSWORD"
+        env:
+          PENNYRUSH_RELEASE_KEYSTORE_BASE64: ${{ secrets.PENNYRUSH_RELEASE_KEYSTORE_BASE64 }}
+          PENNYRUSH_RELEASE_STORE_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_STORE_PASSWORD }}
+          PENNYRUSH_RELEASE_KEY_ALIAS: ${{ secrets.PENNYRUSH_RELEASE_KEY_ALIAS }}
+          PENNYRUSH_RELEASE_KEY_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_KEY_PASSWORD }}
+
       - name: Verify web
         run: |
           npm audit

@@ -1,7 +1,7 @@
 {
   "name": "pennyrush",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Cross-platform personal finance tracker, analyzer, and AI advisor.",
   "license": "MIT",
   "repository": {

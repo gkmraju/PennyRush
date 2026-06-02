@@ -56,7 +56,7 @@ Expected outputs:
 - APK: `android/app/build/outputs/apk/release/`
 - AAB: `android/app/build/outputs/bundle/release/`
 
-If signing values are missing, Gradle can still create an unsigned release APK for local verification, but it is not Play Store-ready.
+If signing values are missing, Gradle can still create an unsigned release APK for local verification, but it is not Play Store-ready. GitHub Actions release builds intentionally fail when signing secrets are missing.
 
 ## Verification Gates
 
