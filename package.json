@@ -25,6 +25,7 @@
     "@types/react-dom": "19.2.3"
   },
   "scripts": {
+    "release:check-env": "node scripts/validate-release-env.mjs",
     "web:dev": "npm --workspace web run dev",
     "web:build": "npm --workspace web run build",
     "web:lint": "npm --workspace web run lint",

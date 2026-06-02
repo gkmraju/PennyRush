@@ -4,15 +4,21 @@ import { LogIn, LogOut } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
+  const configured = isSupabaseConfigured();
+  const supabase = useMemo(() => (configured ? createClient() : null), [configured]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
       setLoading(false);
@@ -28,6 +34,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   async function signInWithGoogle() {
+    if (!supabase) return;
     const origin = window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -38,6 +45,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    if (!supabase) return;
     await supabase.auth.signOut();
   }
 
@@ -56,16 +64,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">PennyRush</p>
             <h1 className="text-3xl font-bold tracking-normal">
-              Every penny, in a rush to be tracked.
+              A private money hub for everyday spending.
             </h1>
             <p className="text-base text-muted-foreground">
-              Sign in to keep your accounts, imports, insights, and budgets
-              ready across devices.
+              {configured
+                ? "Sign in to keep your activity, imports, plans, and insights ready across devices."
+                : "This build is missing the secure connection settings. Add the production configuration values and rebuild."}
             </p>
           </div>
-          <Button className="h-12 w-full" onClick={signInWithGoogle}>
+          <Button className="h-12 w-full" onClick={signInWithGoogle} disabled={!configured}>
             <LogIn className="mr-2 size-4" />
-            Continue with Google
+            {configured ? "Continue with Google" : "Setup required"}
           </Button>
           <p className="text-center text-xs leading-5 text-muted-foreground">
             By continuing, you agree to the{" "}

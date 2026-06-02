@@ -63,6 +63,8 @@ If signing values are missing, Gradle can still create an unsigned release APK f
 Run these before tagging or uploading a build:
 
 ```bash
+source .env.local
+npm run release:check-env
 npm audit
 npm run web:test
 npm run web:lint
