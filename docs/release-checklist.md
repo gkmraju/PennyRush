@@ -96,6 +96,6 @@ Manual QA:
 - Add short description and full description from `docs/play-store-listing.md`.
 - Confirm Play metadata under `android/fastlane/metadata/android/en-US/` matches the listing.
 - Add screenshots for Home, Activity, Plan, Insights, Account, import, and scan flows.
-- Complete Play Data Safety using `docs/privacy-policy.md`.
+- Complete Play Data Safety using `docs/play-data-safety.md` and verify it still matches `docs/privacy-policy.md`.
 - Confirm the app has no ads and no third-party tracking SDKs.
 - Confirm support contact and privacy policy URL are real.

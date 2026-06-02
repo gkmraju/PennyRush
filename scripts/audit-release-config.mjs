@@ -24,6 +24,7 @@ const requiredFiles = [
   "android/fastlane/metadata/android/en-US/full_description.txt",
   "android/fastlane/metadata/android/en-US/privacy_url.txt",
   "docs/play-store-listing.md",
+  "docs/play-data-safety.md",
   "docs/privacy-policy.md",
   "docs/release-checklist.md",
   "web/app/api/account/delete/route.ts",
@@ -101,9 +102,21 @@ const checks = [
     file: "docs/release-checklist.md",
     values: [
       "Upload a signed AAB",
+      "docs/play-data-safety.md",
       "Delete a throwaway account",
       "Play Data Safety",
       "no third-party tracking SDKs",
+    ],
+  },
+  {
+    file: "docs/play-data-safety.md",
+    values: [
+      "Ads: No",
+      "Third-party tracking SDKs: No",
+      "Account deletion: Yes",
+      "Raw CSV statement files are not uploaded",
+      "POST_NOTIFICATIONS",
+      "does not request SMS",
     ],
   },
 ];
