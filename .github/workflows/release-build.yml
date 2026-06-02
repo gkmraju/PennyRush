@@ -1,0 +1,85 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Verify web
+        run: |
+          npm audit
+          npm run web:test
+          npm run web:lint
+          npm run web:typecheck
+          npm run web:build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Decode Android keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/pennyrush-signing"
+          printf '%s' "${{ secrets.PENNYRUSH_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/pennyrush-signing/release.jks"
+
+      - name: Build Android release APK and AAB
+        working-directory: android
+        run: ./gradlew :app:assembleRelease :app:bundleRelease
+        env:
+          PENNYRUSH_SUPABASE_URL: ${{ secrets.PENNYRUSH_SUPABASE_URL }}
+          PENNYRUSH_SUPABASE_ANON_KEY: ${{ secrets.PENNYRUSH_SUPABASE_ANON_KEY }}
+          PENNYRUSH_RELEASE_STORE_FILE: ${{ runner.temp }}/pennyrush-signing/release.jks
+          PENNYRUSH_RELEASE_STORE_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_STORE_PASSWORD }}
+          PENNYRUSH_RELEASE_KEY_ALIAS: ${{ secrets.PENNYRUSH_RELEASE_KEY_ALIAS }}
+          PENNYRUSH_RELEASE_KEY_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_KEY_PASSWORD }}
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pennyrush-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Upload Android AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: pennyrush-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload web build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: pennyrush-web-next-build
+          path: web/.next
+          if-no-files-found: error

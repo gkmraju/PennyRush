@@ -26,6 +26,23 @@ PENNYRUSH_RELEASE_KEY_ALIAS=...
 PENNYRUSH_RELEASE_KEY_PASSWORD=...
 ```
 
+For GitHub Actions release builds, configure these repository secrets:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `PENNYRUSH_SUPABASE_URL`
+- `PENNYRUSH_SUPABASE_ANON_KEY`
+- `PENNYRUSH_RELEASE_KEYSTORE_BASE64`
+- `PENNYRUSH_RELEASE_STORE_PASSWORD`
+- `PENNYRUSH_RELEASE_KEY_ALIAS`
+- `PENNYRUSH_RELEASE_KEY_PASSWORD`
+
+Create `PENNYRUSH_RELEASE_KEYSTORE_BASE64` from the Play signing upload keystore:
+
+```bash
+base64 -w 0 pennyrush-release.jks
+```
+
 Build commands:
 
 ```bash
