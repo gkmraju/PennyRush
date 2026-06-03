@@ -68,6 +68,7 @@ jobs:
           PENNYRUSH_RELEASE_STORE_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_STORE_PASSWORD }}
           PENNYRUSH_RELEASE_KEY_ALIAS: ${{ secrets.PENNYRUSH_RELEASE_KEY_ALIAS }}
           PENNYRUSH_RELEASE_KEY_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_KEY_PASSWORD }}
+          PENNYRUSH_REQUIRE_SIGNED_ANDROID: "true"
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4

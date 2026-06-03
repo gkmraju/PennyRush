@@ -49,6 +49,7 @@ const checks = [
       "npm run release:check-env",
       "npm run release:verify",
       "PENNYRUSH_RELEASE_STORE_FILE",
+      "PENNYRUSH_REQUIRE_SIGNED_ANDROID",
       "pennyrush-release-aab",
     ],
   },
