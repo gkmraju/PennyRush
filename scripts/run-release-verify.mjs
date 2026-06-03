@@ -64,6 +64,11 @@ const steps = [
     args: [":feature:home:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease", ":app:bundleRelease"],
     cwd: "android",
   },
+  {
+    title: "Audit Android release artifacts",
+    command: npmCommand,
+    args: ["run", "release:audit-android"],
+  },
 ];
 
 if (!existsSync("android/gradlew") && process.platform !== "win32") {

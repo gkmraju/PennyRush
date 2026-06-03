@@ -74,6 +74,7 @@ Run this with production-like values loaded:
 source .env.local
 npm run release:check-env
 npm run release:audit-config
+npm run release:audit-android
 npm run release:audit-store
 npm run release:verify
 ```
@@ -84,6 +85,7 @@ npm run release:verify
 
 - Run the GitHub release workflow after secrets are configured.
 - Download the `pennyrush-release-aab` artifact.
+- Confirm `PENNYRUSH_REQUIRE_SIGNED_ANDROID=true npm run release:audit-android` passes against the release artifacts.
 - Confirm the artifact is signed with the Play upload key.
 - Upload the signed AAB to an internal Play testing track first.
 

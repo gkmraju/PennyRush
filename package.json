@@ -25,6 +25,7 @@
     "@types/react-dom": "19.2.3"
   },
   "scripts": {
+    "release:audit-android": "node scripts/audit-android-artifacts.mjs",
     "release:audit-config": "node scripts/audit-release-config.mjs",
     "release:audit-store": "node scripts/audit-store-metadata.mjs",
     "release:check-production": "node scripts/check-production-web.mjs",

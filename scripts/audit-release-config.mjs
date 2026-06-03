@@ -29,6 +29,7 @@ const requiredFiles = [
   "docs/privacy-policy.md",
   "docs/release-checklist.md",
   "SUPPORT.md",
+  "scripts/audit-android-artifacts.mjs",
   "scripts/audit-store-metadata.mjs",
   "scripts/check-production-web.mjs",
   "scripts/run-release-verify.mjs",
@@ -135,6 +136,20 @@ const checks = [
     ],
   },
   {
+    file: "scripts/audit-android-artifacts.mjs",
+    values: [
+      "PENNYRUSH_REQUIRE_SIGNED_ANDROID",
+      "PENNYRUSH_RELEASE_STORE_FILE",
+      "android/app/build/outputs/apk/release/output-metadata.json",
+      "android/app/build/outputs/bundle/release/app-release.aab",
+      "Android artifact audit passed",
+    ],
+  },
+  {
+    file: "package.json",
+    values: ["release:audit-android"],
+  },
+  {
     file: "scripts/check-production-web.mjs",
     values: [
       "PENNYRUSH_PRODUCTION_WEB_URL",
@@ -185,6 +200,7 @@ const checks = [
       ":app:compileDebugKotlin",
       ":app:lintRelease",
       ":app:bundleRelease",
+      "release:audit-android",
     ],
   },
 ];
