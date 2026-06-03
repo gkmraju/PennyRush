@@ -17,6 +17,7 @@ For the full deployment handoff, follow `docs/production-deployment.md` in order
 - Publish the web app at the domain used in Android policy links, currently `https://pennyrush.dev`.
 - Confirm `/privacy` and `/terms` are reachable on the deployed web domain.
 - Confirm `/robots.txt`, `/sitemap.xml`, and core security headers are present on the deployed web domain.
+- Run `PENNYRUSH_PRODUCTION_WEB_URL=https://pennyrush.dev npm run release:check-production` after deployment.
 - Confirm web and Android account deletion are enabled with `SUPABASE_SERVICE_ROLE_KEY` and tested on a throwaway account.
 
 ## Android Signing

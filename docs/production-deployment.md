@@ -40,6 +40,11 @@ This runbook covers the external steps required to ship PennyRush to users. The 
   - `https://pennyrush.dev/robots.txt`
   - `https://pennyrush.dev/sitemap.xml`
 - Verify response headers include HSTS, frame protection, content type protection, referrer policy, and permissions policy.
+- Run the production web check after DNS and Vercel deployment are live:
+
+```bash
+PENNYRUSH_PRODUCTION_WEB_URL=https://pennyrush.dev npm run release:check-production
+```
 
 ## 4. GitHub Actions secrets
 

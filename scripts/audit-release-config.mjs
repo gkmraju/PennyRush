@@ -30,6 +30,7 @@ const requiredFiles = [
   "docs/release-checklist.md",
   "SUPPORT.md",
   "scripts/audit-store-metadata.mjs",
+  "scripts/check-production-web.mjs",
   "scripts/run-release-verify.mjs",
   "web/app/api/account/delete/route.ts",
   "web/app/manifest.ts",
@@ -132,6 +133,23 @@ const checks = [
       "full_description.txt",
       "https://pennyrush.dev/privacy",
     ],
+  },
+  {
+    file: "scripts/check-production-web.mjs",
+    values: [
+      "PENNYRUSH_PRODUCTION_WEB_URL",
+      "strict-transport-security",
+      "x-content-type-options",
+      "Production web check passed",
+      "/privacy",
+      "/terms",
+      "/robots.txt",
+      "/sitemap.xml",
+    ],
+  },
+  {
+    file: "package.json",
+    values: ["release:check-production"],
   },
   {
     file: "SUPPORT.md",
