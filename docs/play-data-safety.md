@@ -65,4 +65,6 @@ Current Android permissions:
 - `INTERNET` for authentication and app data access.
 - `POST_NOTIFICATIONS` for budget and spending alerts.
 
+Android app lock uses the device biometric or screen-lock prompt. PennyRush does not receive or store fingerprint, face, PIN, pattern, or password data.
+
 The current app does not request SMS, contacts, location, microphone, calendar, or broad photo library permissions.

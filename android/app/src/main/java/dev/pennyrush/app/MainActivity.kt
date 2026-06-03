@@ -1,10 +1,13 @@
 package dev.pennyrush.app
 
 import android.content.Intent
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,17 +29,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +52,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import dev.pennyrush.core.designsystem.AppPreferences
 import dev.pennyrush.core.designsystem.PennyrushTheme
 import dev.pennyrush.core.designsystem.ThemeMode
 import dev.pennyrush.core.designsystem.ThemePreferences
@@ -65,7 +76,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleAuthDeeplink(intent)
@@ -114,18 +125,27 @@ private fun PennyrushApp() {
             val userId = status.session.user?.id
             val sync = remember(userId) { syncFor(repo, userId) }
             val planningSync = remember(userId) { planningSyncFor(repo, userId) }
-            HomeRoute(
-                userEmail = status.session.user?.email,
-                userName = status.session.user?.metaString("full_name", "name"),
-                userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
-                appVersion = BuildConfig.VERSION_NAME,
-                sync = sync,
-                planningSync = planningSync,
-                onDeleteAccount = { deleteAccount(status.session.accessToken, supabase) },
-                onSignOut = {
-                    supabase.auth.signOut()
-                },
-            )
+            var unlocked by remember(userId, AppPreferences.biometricLock) {
+                mutableStateOf(!AppPreferences.biometricLock)
+            }
+            val signOut: suspend () -> Unit = { supabase.auth.signOut() }
+            if (!unlocked) {
+                BiometricUnlockRoute(
+                    onUnlock = { unlocked = true },
+                    onSignOut = signOut,
+                )
+            } else {
+                HomeRoute(
+                    userEmail = status.session.user?.email,
+                    userName = status.session.user?.metaString("full_name", "name"),
+                    userAvatarUrl = status.session.user?.metaString("avatar_url", "picture"),
+                    appVersion = BuildConfig.VERSION_NAME,
+                    sync = sync,
+                    planningSync = planningSync,
+                    onDeleteAccount = { deleteAccount(status.session.accessToken, supabase) },
+                    onSignOut = signOut,
+                )
+            }
         }
         SessionStatus.Initializing -> LoadingAuth()
         is SessionStatus.NotAuthenticated,
@@ -224,6 +244,129 @@ private fun GoogleSignInRoute() {
         }
     }
 }
+
+@Composable
+private fun BiometricUnlockRoute(
+    onUnlock: () -> Unit,
+    onSignOut: suspend () -> Unit,
+) {
+    val context = LocalContext.current
+    val activity = remember(context) { context.findFragmentActivity() }
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("Unlock PennyRush to view your money activity.") }
+
+    fun requestUnlock() {
+        val host = activity
+        if (host == null) {
+            status = "App lock is unavailable on this device."
+            return
+        }
+        host.requestBiometricUnlock(
+            onSuccess = onUnlock,
+            onError = { status = it },
+        )
+    }
+
+    LaunchedEffect(activity) {
+        requestUnlock()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(28.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BrandMark()
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "PennyRush is locked",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(28.dp))
+            Button(
+                onClick = { requestUnlock() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 54.dp),
+                shape = CircleShape,
+            ) {
+                Text("Unlock")
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { scope.launch { onSignOut() } },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 54.dp),
+                shape = CircleShape,
+            ) {
+                Text("Sign out")
+            }
+        }
+    }
+}
+
+private fun FragmentActivity.requestBiometricUnlock(
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit,
+) {
+    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    val manager = BiometricManager.from(this)
+    val canAuthenticate = manager.canAuthenticate(authenticators)
+    if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
+        onError("Set up fingerprint, face unlock, or a device PIN in Android settings to use app lock.")
+        return
+    }
+
+    val prompt = BiometricPrompt(
+        this,
+        ContextCompat.getMainExecutor(this),
+        object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                onSuccess()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                onError(errString.toString())
+            }
+
+            override fun onAuthenticationFailed() {
+                onError("Authentication failed. Try again.")
+            }
+        },
+    )
+
+    val promptInfo = BiometricPrompt.PromptInfo.Builder()
+        .setTitle("Unlock PennyRush")
+        .setSubtitle("Confirm it is you before viewing your money activity.")
+        .setAllowedAuthenticators(authenticators)
+        .build()
+
+    prompt.authenticate(promptInfo)
+}
+
+private tailrec fun Context.findFragmentActivity(): FragmentActivity? =
+    when (this) {
+        is FragmentActivity -> this
+        is ContextWrapper -> baseContext.findFragmentActivity()
+        else -> null
+    }
 
 private fun syncFor(repo: TransactionsRepository, userId: String?): TransactionsSync {
     if (userId.isNullOrBlank()) return TransactionsSync()

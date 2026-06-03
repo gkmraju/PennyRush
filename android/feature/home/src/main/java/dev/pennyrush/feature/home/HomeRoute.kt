@@ -3889,7 +3889,7 @@ private fun AccountContent(
                 SettingsRow(
                     icon = Icons.Rounded.Fingerprint,
                     title = "Biometric lock",
-                    subtitle = "Require fingerprint to unlock",
+                    subtitle = "Require device unlock to open PennyRush",
                     trailing = {
                         Switch(
                             checked = biometricLock,
