@@ -445,6 +445,7 @@ fun HomeRoute(
     appVersion: String = "1.0.0",
     sync: TransactionsSync = TransactionsSync(),
     planningSync: PlanningSync = PlanningSync(),
+    canUseAppLock: () -> Boolean = { true },
     onDeleteAccount: suspend () -> Unit = {},
     onSignOut: suspend () -> Unit = {},
 ) {
@@ -718,6 +719,7 @@ fun HomeRoute(
                 userAvatarUrl = userAvatarUrl,
                 appVersion = appVersion,
                 sync = sync,
+                canUseAppLock = canUseAppLock,
                 onImportStatement = openImport,
                 onScanReceipt = openReceiptScan,
                 notificationsAllowed = notificationsAllowed,
@@ -3626,6 +3628,7 @@ private fun AccountContent(
     userAvatarUrl: String?,
     appVersion: String,
     sync: TransactionsSync,
+    canUseAppLock: () -> Boolean,
     onImportStatement: () -> Unit,
     onScanReceipt: () -> Unit,
     notificationsAllowed: Boolean,
@@ -3894,6 +3897,10 @@ private fun AccountContent(
                         Switch(
                             checked = biometricLock,
                             onCheckedChange = {
+                                if (it && !canUseAppLock()) {
+                                    toast("Set up fingerprint, face unlock, or a device PIN in Android settings first")
+                                    return@Switch
+                                }
                                 AppPreferences.updateBiometricLock(it)
                                 toast(if (it) "Biometric lock enabled" else "Biometric lock disabled")
                             },

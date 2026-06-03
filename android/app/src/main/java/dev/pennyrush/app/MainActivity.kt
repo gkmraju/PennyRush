@@ -119,6 +119,10 @@ private fun PennyrushApp() {
     val supabase = PennyrushSupabase.client
     val repo = remember { TransactionsRepository(supabase) }
     val sessionStatus by supabase.auth.sessionStatus.collectAsState()
+    val context = LocalContext.current
+    val canUseAppLock = remember(context) {
+        { context.findFragmentActivity()?.canUseBiometricAppLock() ?: false }
+    }
 
     when (val status = sessionStatus) {
         is SessionStatus.Authenticated -> {
@@ -132,6 +136,7 @@ private fun PennyrushApp() {
             if (!unlocked) {
                 BiometricUnlockRoute(
                     onUnlock = { unlocked = true },
+                    onDisableAppLock = { AppPreferences.updateBiometricLock(false) },
                     onSignOut = signOut,
                 )
             } else {
@@ -142,6 +147,7 @@ private fun PennyrushApp() {
                     appVersion = BuildConfig.VERSION_NAME,
                     sync = sync,
                     planningSync = planningSync,
+                    canUseAppLock = canUseAppLock,
                     onDeleteAccount = { deleteAccount(status.session.accessToken, supabase) },
                     onSignOut = signOut,
                 )
@@ -248,21 +254,29 @@ private fun GoogleSignInRoute() {
 @Composable
 private fun BiometricUnlockRoute(
     onUnlock: () -> Unit,
+    onDisableAppLock: () -> Unit,
     onSignOut: suspend () -> Unit,
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findFragmentActivity() }
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf("Unlock PennyRush to view your money activity.") }
+    var unlockUnavailable by remember { mutableStateOf(false) }
 
     fun requestUnlock() {
+        unlockUnavailable = false
         val host = activity
         if (host == null) {
             status = "App lock is unavailable on this device."
+            unlockUnavailable = true
             return
         }
         host.requestBiometricUnlock(
             onSuccess = onUnlock,
+            onUnavailable = {
+                status = it
+                unlockUnavailable = true
+            },
             onError = { status = it },
         )
     }
@@ -317,12 +331,25 @@ private fun BiometricUnlockRoute(
             ) {
                 Text("Sign out")
             }
+            if (unlockUnavailable) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onDisableAppLock,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 54.dp),
+                    shape = CircleShape,
+                ) {
+                    Text("Turn off app lock")
+                }
+            }
         }
     }
 }
 
 private fun FragmentActivity.requestBiometricUnlock(
     onSuccess: () -> Unit,
+    onUnavailable: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
     val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
@@ -330,7 +357,7 @@ private fun FragmentActivity.requestBiometricUnlock(
     val manager = BiometricManager.from(this)
     val canAuthenticate = manager.canAuthenticate(authenticators)
     if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
-        onError("Set up fingerprint, face unlock, or a device PIN in Android settings to use app lock.")
+        onUnavailable("Set up fingerprint, face unlock, or a device PIN in Android settings to use app lock.")
         return
     }
 
@@ -359,6 +386,12 @@ private fun FragmentActivity.requestBiometricUnlock(
         .build()
 
     prompt.authenticate(promptInfo)
+}
+
+private fun FragmentActivity.canUseBiometricAppLock(): Boolean {
+    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+        BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    return BiometricManager.from(this).canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
 }
 
 private tailrec fun Context.findFragmentActivity(): FragmentActivity? =
