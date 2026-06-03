@@ -27,6 +27,7 @@
   "scripts": {
     "release:audit-android": "node scripts/audit-android-artifacts.mjs",
     "release:audit-config": "node scripts/audit-release-config.mjs",
+    "release:audit-privacy": "node scripts/audit-privacy-surface.mjs",
     "release:audit-store": "node scripts/audit-store-metadata.mjs",
     "release:check-production": "node scripts/check-production-web.mjs",
     "release:check-env": "node scripts/validate-release-env.mjs",

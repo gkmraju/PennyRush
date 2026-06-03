@@ -30,6 +30,7 @@ const requiredFiles = [
   "docs/release-checklist.md",
   "SUPPORT.md",
   "scripts/audit-android-artifacts.mjs",
+  "scripts/audit-privacy-surface.mjs",
   "scripts/audit-store-metadata.mjs",
   "scripts/check-production-web.mjs",
   "scripts/run-release-verify.mjs",
@@ -147,8 +148,18 @@ const checks = [
     ],
   },
   {
+    file: "scripts/audit-privacy-surface.mjs",
+    values: [
+      "android.permission.INTERNET",
+      "android.permission.POST_NOTIFICATIONS",
+      "android.permission.READ_SMS",
+      "firebase-(analytics|crashlytics|perf|messaging)",
+      "Privacy surface audit passed",
+    ],
+  },
+  {
     file: "package.json",
-    values: ["release:audit-android"],
+    values: ["release:audit-android", "release:audit-privacy"],
   },
   {
     file: "scripts/check-production-web.mjs",
@@ -195,6 +206,7 @@ const checks = [
     values: [
       "release:audit-config",
       "web:test",
+      "release:audit-privacy",
       "web:lint",
       "web:typecheck",
       "web:build",

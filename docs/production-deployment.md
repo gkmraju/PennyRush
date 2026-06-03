@@ -75,6 +75,7 @@ source .env.local
 npm run release:check-env
 npm run release:audit-config
 npm run release:audit-android
+npm run release:audit-privacy
 npm run release:audit-store
 npm run release:verify
 ```

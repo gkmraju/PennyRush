@@ -16,6 +16,11 @@ const steps = [
     args: ["run", "release:audit-store"],
   },
   {
+    title: "Audit privacy surface",
+    command: npmCommand,
+    args: ["run", "release:audit-privacy"],
+  },
+  {
     title: "Audit dependencies",
     command: npmCommand,
     args: ["audit"],
