@@ -52,26 +52,16 @@ jobs:
           PENNYRUSH_RELEASE_KEY_ALIAS: ${{ secrets.PENNYRUSH_RELEASE_KEY_ALIAS }}
           PENNYRUSH_RELEASE_KEY_PASSWORD: ${{ secrets.PENNYRUSH_RELEASE_KEY_PASSWORD }}
 
-      - name: Verify web
-        run: |
-          npm audit
-          npm run web:test
-          npm run web:lint
-          npm run web:typecheck
-          npm run web:build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
       - name: Decode Android keystore
         run: |
           mkdir -p "$RUNNER_TEMP/pennyrush-signing"
           printf '%s' "${{ secrets.PENNYRUSH_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/pennyrush-signing/release.jks"
 
-      - name: Build Android release APK and AAB
-        working-directory: android
-        run: ./gradlew :app:assembleRelease :app:bundleRelease
+      - name: Verify web and Android release artifacts
+        run: npm run release:verify
         env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           PENNYRUSH_SUPABASE_URL: ${{ secrets.PENNYRUSH_SUPABASE_URL }}
           PENNYRUSH_SUPABASE_ANON_KEY: ${{ secrets.PENNYRUSH_SUPABASE_ANON_KEY }}
           PENNYRUSH_RELEASE_STORE_FILE: ${{ runner.temp }}/pennyrush-signing/release.jks
