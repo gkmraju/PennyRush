@@ -71,6 +71,8 @@ npm run release:check-env
 npm run release:verify
 ```
 
+`release:verify` includes web verification, Android release lint, Android unit tests, and debug/release artifact builds.
+
 Manual QA:
 
 - Sign in on Android and web.

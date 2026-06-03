@@ -78,6 +78,13 @@ jobs:
           PENNYRUSH_SUPABASE_URL: ${{ secrets.PENNYRUSH_SUPABASE_URL }}
           PENNYRUSH_SUPABASE_ANON_KEY: ${{ secrets.PENNYRUSH_SUPABASE_ANON_KEY }}
 
+      - name: Android release lint
+        working-directory: android
+        run: ./gradlew :app:lintRelease
+        env:
+          PENNYRUSH_SUPABASE_URL: ${{ secrets.PENNYRUSH_SUPABASE_URL }}
+          PENNYRUSH_SUPABASE_ANON_KEY: ${{ secrets.PENNYRUSH_SUPABASE_ANON_KEY }}
+
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug

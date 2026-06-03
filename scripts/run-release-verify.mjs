@@ -42,6 +42,12 @@ const steps = [
     cwd: "android",
   },
   {
+    title: "Run Android release lint",
+    command: gradleCommand,
+    args: [":app:lintRelease"],
+    cwd: "android",
+  },
+  {
     title: "Test and package Android",
     command: gradleCommand,
     args: [":feature:home:testDebugUnitTest", ":app:assembleDebug", ":app:assembleRelease", ":app:bundleRelease"],
