@@ -25,7 +25,7 @@ const sections = [
     title: "Your Account",
     body: [
       "You are responsible for keeping your sign-in account secure and for activity performed through your account.",
-      "If you believe someone else has accessed your account or data, secure your Google account and contact the PennyRush maintainer through the support channel listed with the app release.",
+      "If you believe someone else has accessed your account or data, secure your Google account and contact the PennyRush maintainer at github.com/royalpinto007/PennyRush/issues.",
     ],
   },
   {

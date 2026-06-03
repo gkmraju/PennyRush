@@ -27,6 +27,7 @@ const requiredFiles = [
   "docs/play-data-safety.md",
   "docs/privacy-policy.md",
   "docs/release-checklist.md",
+  "SUPPORT.md",
   "scripts/run-release-verify.mjs",
   "web/app/api/account/delete/route.ts",
   "web/app/manifest.ts",
@@ -108,7 +109,20 @@ const checks = [
       "Delete a throwaway account",
       "Play Data Safety",
       "no third-party tracking SDKs",
+      "https://github.com/royalpinto007/PennyRush/issues",
     ],
+  },
+  {
+    file: "SUPPORT.md",
+    values: ["https://github.com/royalpinto007/PennyRush/issues"],
+  },
+  {
+    file: "web/app/privacy/page.tsx",
+    values: ["github.com/royalpinto007/PennyRush/issues"],
+  },
+  {
+    file: "web/app/terms/page.tsx",
+    values: ["github.com/royalpinto007/PennyRush/issues"],
   },
   {
     file: "docs/play-data-safety.md",

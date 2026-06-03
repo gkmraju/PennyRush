@@ -53,7 +53,7 @@ const sections = [
   {
     title: "Contact",
     body: [
-      "For privacy questions, data requests, or security reports, contact the PennyRush maintainer through the project repository or support channel listed with the app release.",
+      "For privacy questions, data requests, or security reports, contact the PennyRush maintainer at github.com/royalpinto007/PennyRush/issues.",
     ],
   },
 ];

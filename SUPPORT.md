@@ -4,6 +4,8 @@ For bugs and feature requests, use GitHub issues:
 
 https://github.com/royalpinto007/PennyRush/issues
 
+Use the same support URL for app-store support links until a dedicated PennyRush support email or help desk is configured.
+
 Before opening an issue:
 
 - Search existing issues.

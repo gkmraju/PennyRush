@@ -91,4 +91,4 @@ Manual QA:
 - Add screenshots for Home, Activity, Plan, Insights, Account, import, and scan flows.
 - Complete Play Data Safety using `docs/play-data-safety.md` and verify it still matches `docs/privacy-policy.md`.
 - Confirm the app has no ads and no third-party tracking SDKs.
-- Confirm support contact and privacy policy URL are real.
+- Confirm support contact is live at `https://github.com/royalpinto007/PennyRush/issues` or replace it with a dedicated support email/help desk before Play submission.

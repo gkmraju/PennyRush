@@ -3691,18 +3691,7 @@ private fun AccountContent(
     }
 
     fun sendFeedback() {
-        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
-            putExtra(Intent.EXTRA_SUBJECT, "PennyRush feedback")
-            putExtra(
-                Intent.EXTRA_TEXT,
-                "Hi PennyRush team,\n\n" +
-                    "Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n" +
-                    "Android: ${android.os.Build.VERSION.RELEASE}\n\n",
-            )
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { context.startActivity(intent) }
-            .onFailure { toast("No email app installed") }
+        openExternal("https://github.com/royalpinto007/PennyRush/issues")
     }
 
     LazyColumn(

@@ -22,7 +22,7 @@ Current categorization and insight helpers use app rules and saved activity fiel
 
 ## Security
 
-PennyRush uses Supabase Auth and authenticated database access. All production requests should use HTTPS. Keep your Google account secure and report suspicious account activity through the support channel listed with the app release.
+PennyRush uses Supabase Auth and authenticated database access. All production requests should use HTTPS. Keep your Google account secure and report suspicious account activity through the support channel listed with the app release, currently https://github.com/royalpinto007/PennyRush/issues.
 
 ## Data Controls
 
