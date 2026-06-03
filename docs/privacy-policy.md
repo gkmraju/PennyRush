@@ -4,15 +4,17 @@ Last updated: June 3, 2026
 
 PennyRush is designed to help you track personal finances without turning your financial life into an advertising product.
 
+PennyRush does not sell personal data.
+
 ## Data We Store
 
 PennyRush stores the structured finance data you choose to save, including profile settings, accounts, categories, activity entries, budgets, goals, insights, and preferences.
 
 ## Files Are Never Stored
 
-When you import a CSV statement on web, PennyRush parses the file in the browser and does not upload the raw statement file to object storage.
+When you import a CSV statement on web, PennyRush parses the file in the browser and does not upload the raw statement file to object storage. Raw CSV statement files are not uploaded by PennyRush.
 
-When you scan a receipt on Android, PennyRush reads the selected or captured image to extract entry details for review. PennyRush saves the resulting activity entry, not the raw receipt image.
+When you scan a receipt on Android, PennyRush reads the selected or captured image to extract entry details for review. PennyRush saves the resulting activity entry, not the raw receipt image. Receipt images are not stored by PennyRush after scan review.
 
 Only the extracted activity data that you confirm is saved.
 
@@ -26,7 +28,7 @@ PennyRush uses Supabase Auth and authenticated database access. All production r
 
 ## Data Controls
 
-You can export activity as a CSV file from the app. You can delete saved activity entries from the Account and data tools. Web and Android also include a guarded account deletion flow that removes your PennyRush account and saved app data.
+You can export activity as a CSV file from the app. You can delete saved activity entries from the Account and data tools. Web and Android also include a guarded account deletion flow that lets you delete your account and removes your PennyRush account and saved app data.
 
 ## Tracking And Ads
 

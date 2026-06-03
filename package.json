@@ -26,6 +26,7 @@
   },
   "scripts": {
     "release:audit-config": "node scripts/audit-release-config.mjs",
+    "release:audit-store": "node scripts/audit-store-metadata.mjs",
     "release:check-env": "node scripts/validate-release-env.mjs",
     "release:verify": "node scripts/run-release-verify.mjs",
     "web:dev": "npm --workspace web run dev",

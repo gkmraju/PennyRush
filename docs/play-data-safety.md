@@ -42,6 +42,7 @@ Saved finance data can include:
 - Web CSV imports are parsed in the browser.
 - Raw CSV statement files are not uploaded to storage by the web import flow.
 - Android receipt images are read for review and entry extraction.
+- Android receipt images are not stored by PennyRush after scan review.
 - PennyRush saves the confirmed activity entry, not the raw receipt image.
 - Camera captures are stored in app cache only for the scan/review flow.
 

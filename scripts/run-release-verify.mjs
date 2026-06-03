@@ -11,6 +11,11 @@ const steps = [
     args: ["run", "release:audit-config"],
   },
   {
+    title: "Audit store metadata",
+    command: npmCommand,
+    args: ["run", "release:audit-store"],
+  },
+  {
     title: "Audit dependencies",
     command: npmCommand,
     args: ["audit"],
@@ -34,6 +39,12 @@ const steps = [
     title: "Build web",
     command: npmCommand,
     args: ["run", "web:build"],
+  },
+  {
+    title: "Clean Android build outputs",
+    command: gradleCommand,
+    args: ["clean"],
+    cwd: "android",
   },
   {
     title: "Compile Android debug Kotlin",

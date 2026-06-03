@@ -2,6 +2,8 @@
 
 Use this checklist before shipping a public Android or web release.
 
+For the full deployment handoff, follow `docs/production-deployment.md` in order.
+
 ## Required Configuration
 
 - Set production Supabase values:
@@ -68,6 +70,7 @@ Run these before tagging or uploading a build:
 ```bash
 source .env.local
 npm run release:check-env
+npm run release:audit-store
 npm run release:verify
 ```
 
