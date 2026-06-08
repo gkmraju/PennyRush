@@ -35,4 +35,7 @@ object CategorizationRules {
             rule.terms.any { term -> normalized.contains(term) }
         }?.category ?: "Other"
     }
+
+    fun visibleCategories(): List<String> =
+        (rules.map { it.category } + listOf("Income", "ATM", "Transfer", "Other")).distinct().sorted()
 }

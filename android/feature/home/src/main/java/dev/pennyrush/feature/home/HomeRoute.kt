@@ -168,6 +168,7 @@ private val LightAmber = Color(0xFFC87600)
 private val LightSlate = Color(0xFF52645B)
 private const val PlanningPrefs = "pennyrush_planning"
 private const val PlanningGoalsKey = "goals"
+private val CurrencyChoices = listOf("INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD", "CAD")
 
 private data class FinancePalette(
     val income: Color,
@@ -215,6 +216,16 @@ private fun appSurface(): Color =
 @Composable
 private fun softSurface(): Color =
     if (financePalette().darkMode) Color(0xFF1B2621) else Color(0xFFEFF6F2)
+
+private fun money(amount: Double, showSign: Boolean = false): String =
+    MoneyFormatter.format(
+        amount = amount,
+        currencyCode = AppPreferences.currencyCode,
+        showSign = showSign,
+    )
+
+private fun compactMoney(amount: Double): String =
+    MoneyFormatter.compact(amount, AppPreferences.currencyCode)
 
 @Composable
 private fun Modifier.enterMotion(delayMillis: Int = 0): Modifier {
@@ -1336,7 +1347,7 @@ private fun WalletHero(
                 }
 
                 Text(
-                    text = MoneyFormatter.format(net),
+                    text = money(net),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontWeight = FontWeight.ExtraBold,
@@ -1349,7 +1360,7 @@ private fun WalletHero(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         GlassStat(
                             label = "Month net",
-                            value = MoneyFormatter.format(delta, showSign = true),
+                            value = money(delta, showSign = true),
                             tint = if (positive) palette.income else palette.expense,
                             modifier = Modifier.weight(1f),
                         )
@@ -1686,7 +1697,7 @@ private fun CompactActivityRow(
             )
         }
         Text(
-            text = MoneyFormatter.format(transaction.amount, showSign = true),
+            text = money(transaction.amount, showSign = true),
             color = if (transaction.amount >= 0) palette.income else palette.expense,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             maxLines = 1,
@@ -1773,7 +1784,7 @@ private fun StatCard(
                 )
             }
             Text(
-                text = MoneyFormatter.compact(amount),
+                text = compactMoney(amount),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.sp,
@@ -1847,7 +1858,7 @@ private fun SpendingBreakdown(
                         ),
                     )
                     Text(
-                        MoneyFormatter.compact(total),
+                        compactMoney(total),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.sp,
@@ -1877,7 +1888,7 @@ private fun SpendingBreakdown(
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = MoneyFormatter.compact(amount),
+                            text = compactMoney(amount),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                             ),
@@ -1957,7 +1968,7 @@ private fun TransactionRow(
                 }
             }
             Text(
-                text = MoneyFormatter.format(transaction.amount, showSign = true),
+                text = money(transaction.amount, showSign = true),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.sp,
@@ -2374,7 +2385,7 @@ private fun PlanHero(
                 }
             }
             Text(
-                text = if (overPlan) MoneyFormatter.format(abs(remaining)) else MoneyFormatter.format(remaining),
+                text = if (overPlan) money(abs(remaining)) else money(remaining),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.ExtraBold,
@@ -2404,8 +2415,8 @@ private fun PlanHero(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassStat("Spent", MoneyFormatter.compact(spent), if (overPlan) palette.expense else palette.sky, Modifier.weight(1f))
-                GlassStat("Budget", MoneyFormatter.compact(limit), palette.income, Modifier.weight(1f))
+                GlassStat("Spent", compactMoney(spent), if (overPlan) palette.expense else palette.sky, Modifier.weight(1f))
+                GlassStat("Budget", compactMoney(limit), palette.income, Modifier.weight(1f))
             }
         }
     }
@@ -2607,7 +2618,7 @@ private fun BudgetProgressRow(
                     maxLines = 2,
                 )
                 Text(
-                    text = "${MoneyFormatter.compact(row.spent)} / ${MoneyFormatter.compact(row.limit)}",
+                    text = "${compactMoney(row.spent)} / ${compactMoney(row.limit)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 )
@@ -2627,9 +2638,9 @@ private fun BudgetProgressRow(
             }
             Text(
                 text = if (over) {
-                    "${MoneyFormatter.compact(abs(remaining))} over"
+                    "${compactMoney(abs(remaining))} over"
                 } else {
-                    "${MoneyFormatter.compact(remaining)} left"
+                    "${compactMoney(remaining)} left"
                 },
                 color = if (over) palette.expense else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
@@ -2697,14 +2708,14 @@ private fun SavingsGoalsCard(
         Spacer(Modifier.height(10.dp))
         GoalRow(
             title = "Emergency buffer",
-            body = bufferMonths?.let { "At this pace, you can fund ${MoneyFormatter.compact(bufferTarget)} in $it month${if (it == 1) "" else "s"}." }
-                ?: "Create a monthly surplus to start building a ${MoneyFormatter.compact(bufferTarget)} buffer.",
+            body = bufferMonths?.let { "At this pace, you can fund ${compactMoney(bufferTarget)} in $it month${if (it == 1) "" else "s"}." }
+                ?: "Create a monthly surplus to start building a ${compactMoney(bufferTarget)} buffer.",
             progress = if (surplus > 0) (surplus / bufferTarget).coerceIn(0.04, 1.0).toFloat() else 0.04f,
         )
         Spacer(Modifier.height(12.dp))
         GoalRow(
             title = "Next-month cushion",
-            body = "A ${MoneyFormatter.compact(cushionTarget)} cushion covers one average month of spend.",
+            body = "A ${compactMoney(cushionTarget)} cushion covers one average month of spend.",
             progress = if (surplus > 0) (surplus / cushionTarget).coerceIn(0.04, 1.0).toFloat() else 0.04f,
         )
     }
@@ -2759,7 +2770,7 @@ private fun SavedGoalRow(
                     }
                 }
                 Text(
-                    text = "${MoneyFormatter.compact(goal.currentAmount)} / ${MoneyFormatter.compact(goal.targetAmount)}",
+                    text = "${compactMoney(goal.currentAmount)} / ${compactMoney(goal.targetAmount)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 )
@@ -2877,7 +2888,7 @@ private fun RecurringSpendCard(
                         )
                     }
                     Text(
-                        text = MoneyFormatter.compact(row.averageAmount),
+                        text = compactMoney(row.averageAmount),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     )
                 }
@@ -2923,7 +2934,7 @@ private fun BudgetLimitDialog(
                     colors = AppFieldColors(),
                 )
                 Text(
-                    text = "Current spend: ${MoneyFormatter.format(budget.spent)}",
+                    text = "Current spend: ${money(budget.spent)}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -3164,7 +3175,7 @@ private fun TransactionsSummaryCard(
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Text(
-                    text = MoneyFormatter.format(net, showSign = true),
+                    text = money(net, showSign = true),
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.sp,
@@ -3214,7 +3225,7 @@ private fun CompactMoneyPill(
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
             )
             Text(
-                text = MoneyFormatter.compact(amount),
+                text = compactMoney(amount),
                 color = tint,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 maxLines = 2,
@@ -3368,7 +3379,7 @@ private fun InsightHero(
                     ),
                 )
                 Text(
-                    text = MoneyFormatter.format(net, showSign = true),
+                    text = money(net, showSign = true),
                     color = if (net >= 0) palette.income else palette.expense,
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 )
@@ -3387,8 +3398,8 @@ private fun InsightHero(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassStat("Income", MoneyFormatter.compact(income), palette.income, Modifier.weight(1f))
-                GlassStat("Spend", MoneyFormatter.compact(expenses), palette.expense, Modifier.weight(1f))
+                GlassStat("Income", compactMoney(income), palette.income, Modifier.weight(1f))
+                GlassStat("Spend", compactMoney(expenses), palette.expense, Modifier.weight(1f))
             }
         }
     }
@@ -3465,7 +3476,7 @@ private fun SpendingBarsCard(
                         modifier = Modifier.weight(1f),
                     )
                     Text(
-                        text = MoneyFormatter.compact(amount),
+                        text = compactMoney(amount),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     )
@@ -3579,7 +3590,7 @@ private fun buildLocalInsights(transactions: List<Transaction>): List<FinanceIns
         ?.let { largest ->
             insights += FinanceInsight(
                 "Largest expense",
-                "${largest.merchant} is your biggest outflow this month at ${MoneyFormatter.format(largest.amount)}.",
+                "${largest.merchant} is your biggest outflow this month at ${money(largest.amount)}.",
                 InsightSeverity.Info,
             )
         }
@@ -3591,7 +3602,7 @@ private fun buildLocalInsights(transactions: List<Transaction>): List<FinanceIns
         ?.let { (category, total) ->
             insights += FinanceInsight(
                 "Top spending area",
-                "$category leads this month at ${MoneyFormatter.format(total)}.",
+                "$category leads this month at ${money(total)}.",
                 if (category == "Other") InsightSeverity.Warning else InsightSeverity.Info,
             )
         }
@@ -3648,6 +3659,8 @@ private fun AccountContent(
     val transactions = TransactionsStore.transactions
 
     var versionDialog by remember { mutableStateOf(false) }
+    var currencyDialog by remember { mutableStateOf(false) }
+    var currencyDraft by remember { mutableStateOf(AppPreferences.currencyCode) }
     var deleteActivityDialog by remember { mutableStateOf(false) }
     var deletingActivity by remember { mutableStateOf(false) }
     var deleteAccountDialog by remember { mutableStateOf(false) }
@@ -3727,7 +3740,11 @@ private fun AccountContent(
                     icon = Icons.Rounded.CurrencyRupee,
                     title = "Currency",
                     subtitle = "Used for your accounts and reports",
-                    trailing = { SettingsValue("₹") },
+                    trailing = { SettingsValue(AppPreferences.currencyCode) },
+                    onClick = {
+                        currencyDraft = AppPreferences.currencyCode
+                        currencyDialog = true
+                    },
                 )
                 SettingsDivider()
                 SettingsRow(
@@ -3736,6 +3753,14 @@ private fun AccountContent(
                     subtitle = "${transactions.size} saved ${if (transactions.size == 1) "entry" else "entries"}",
                 )
             }
+        }
+
+        item { SectionLabel("Categories") }
+        item {
+            CategoryMapCard(
+                transactions = transactions,
+                modifier = Modifier.enterMotion(130),
+            )
         }
 
         item { SectionLabel("Display") }
@@ -3985,6 +4010,69 @@ private fun AccountContent(
         )
     }
 
+    if (currencyDialog) {
+        AlertDialog(
+            onDismissRequest = { currencyDialog = false },
+            confirmButton = {
+                Button(
+                    enabled = currencyDraft.trim().length == 3,
+                    onClick = {
+                        AppPreferences.updateCurrencyCode(currencyDraft)
+                        currencyDialog = false
+                        toast("Currency set to ${AppPreferences.currencyCode}")
+                    },
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { currencyDialog = false }) { Text("Cancel") }
+            },
+            title = { Text("Choose currency", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    OutlinedTextField(
+                        value = currencyDraft,
+                        onValueChange = { value ->
+                            currencyDraft = value.filter { it.isLetter() }.uppercase().take(3)
+                        },
+                        singleLine = true,
+                        label = { Text("Currency code") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        shape = InputShape,
+                        colors = AppFieldColors(),
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(CurrencyChoices) { choice ->
+                            Surface(
+                                modifier = Modifier.clickable(role = Role.Button) { currencyDraft = choice },
+                                shape = ChipShape,
+                                color = if (currencyDraft == choice) MaterialTheme.colorScheme.primary else softSurface(),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (currencyDraft == choice) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
+                                ),
+                            ) {
+                                Text(
+                                    text = choice,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                    color = if (currencyDraft == choice) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        "This updates how amounts are shown in PennyRush. It does not convert existing amounts.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            },
+            shape = CardShape,
+        )
+    }
+
     if (deleteActivityDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -4168,9 +4256,101 @@ private fun DataHealthCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 DataHealthMetric("Entries", transactions.size.toString(), Modifier.weight(1f))
-                DataHealthMetric("This month", MoneyFormatter.compact(income - spend), Modifier.weight(1f))
+                DataHealthMetric("This month", compactMoney(income - spend), Modifier.weight(1f))
                 DataHealthMetric("Tagged", "$categorizedRate%", Modifier.weight(1f))
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryMapCard(
+    transactions: List<Transaction>,
+    modifier: Modifier = Modifier,
+) {
+    val categories = CategorizationRules.visibleCategories()
+    val counts = transactions.groupingBy { CategorizationRules.categoryNameFor(it) }.eachCount()
+    val otherCount = counts["Other"] ?: 0
+
+    PrCard(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Spending groups",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.sp,
+                    ),
+                )
+                Text(
+                    text = if (transactions.isEmpty()) {
+                        "Groups appear as you add activity."
+                    } else if (otherCount > transactions.size / 3) {
+                        "Many entries are in Other. Edit merchant names to sharpen groups."
+                    } else {
+                        "Used across Activity, Plan, and Insights."
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            SettingsIconTile(Icons.Rounded.Category)
+        }
+        Spacer(Modifier.height(16.dp))
+        categories.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                row.forEach { category ->
+                    CategoryCountPill(
+                        name = category,
+                        count = counts[category] ?: 0,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row.size == 1) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun CategoryCountPill(
+    name: String,
+    count: Int,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = softSurface(),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = name,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                text = count.toString(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            )
         }
     }
 }
