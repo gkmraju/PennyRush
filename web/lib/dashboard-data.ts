@@ -26,6 +26,27 @@ export type CategoryRow = {
   name: string;
   color: string;
   icon: string;
+  is_system?: boolean;
+};
+
+export type BudgetRow = {
+  id: string;
+  category_id: string;
+  amount: number;
+  period: "monthly" | "weekly";
+  start_date: string;
+  category: {
+    name: string;
+    color: string | null;
+  } | null;
+};
+
+export type GoalRow = {
+  id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string | null;
 };
 
 export type InsightRow = {
@@ -43,6 +64,8 @@ export type DashboardData = {
   profile: ProfileSettings;
   account: AccountRow | null;
   categories: CategoryRow[];
+  budgets: BudgetRow[];
+  goals: GoalRow[];
   insights: InsightRow[];
   transactions: TransactionRow[];
 };
@@ -53,6 +76,7 @@ export type ImportSaveResult = {
 };
 
 export type ManualTransactionInput = {
+  id?: string;
   amount: number;
   type: TransactionType;
   date: string;
@@ -67,14 +91,31 @@ type RawTransactionRow = Omit<TransactionRow, "category"> & {
   categories?: { name?: string | null; color?: string | null } | { name?: string | null; color?: string | null }[] | null;
 };
 
+type RawBudgetRow = Omit<BudgetRow, "category" | "amount"> & {
+  amount: number | string;
+  categories?: { name?: string | null; color?: string | null } | { name?: string | null; color?: string | null }[] | null;
+};
+
+type RawGoalRow = Omit<GoalRow, "target_amount" | "current_amount"> & {
+  target_amount: number | string;
+  current_amount: number | string;
+};
+
 const transactionSelect =
   "id, amount, type, date, merchant, note, source, created_at, category_id, imported_hash, categories(name,color)";
+const budgetSelect = "id, category_id, amount, period, start_date, categories(name,color)";
+const goalSelect = "id, name, target_amount, current_amount, target_date";
 
 const defaultProfile: ProfileSettings = {
   currency: "USD",
   locale: "en-US",
   localOnlyMode: false,
 };
+
+function currentMonthStart() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+}
 
 export async function loadDashboardData(supabase: SupabaseClient): Promise<DashboardData> {
   const {
@@ -86,7 +127,9 @@ export async function loadDashboardData(supabase: SupabaseClient): Promise<Dashb
     throw new Error(userError?.message || "You need to sign in again.");
   }
 
-  const [{ data: profile }, { data: accounts }, { data: categories }, { data: transactions }, { data: insights }] =
+  const monthStartText = currentMonthStart();
+
+  const [{ data: profile }, { data: accounts }, { data: categories }, { data: budgets }, { data: goals }, { data: transactions }, { data: insights }] =
     await Promise.all([
       supabase.from("profiles").select("currency, locale, local_only_mode").eq("id", user.id).maybeSingle(),
       supabase
@@ -96,7 +139,15 @@ export async function loadDashboardData(supabase: SupabaseClient): Promise<Dashb
         .eq("archived", false)
         .order("created_at", { ascending: true })
         .limit(1),
-      supabase.from("categories").select("id, name, color, icon").eq("user_id", user.id).order("name"),
+      supabase.from("categories").select("id, name, color, icon, is_system").eq("user_id", user.id).order("name"),
+      supabase
+        .from("budgets")
+        .select(budgetSelect)
+        .eq("user_id", user.id)
+        .eq("period", "monthly")
+        .eq("start_date", monthStartText)
+        .order("created_at", { ascending: true }),
+      supabase.from("goals").select(goalSelect).eq("user_id", user.id).order("target_date", { ascending: true, nullsFirst: false }),
       supabase
         .from("transactions")
         .select(transactionSelect)
@@ -116,6 +167,8 @@ export async function loadDashboardData(supabase: SupabaseClient): Promise<Dashb
     profile: normalizeProfile(profile),
     account: (accounts?.[0] as AccountRow | undefined) ?? null,
     categories: (categories ?? []) as CategoryRow[],
+    budgets: normalizeBudgetRows((budgets ?? []) as RawBudgetRow[]),
+    goals: normalizeGoalRows((goals ?? []) as RawGoalRow[]),
     insights: (insights ?? []) as InsightRow[],
     transactions: normalizeTransactionRows((transactions ?? []) as RawTransactionRow[]),
   };
@@ -197,6 +250,125 @@ export async function saveManualTransaction(
   return normalizeTransactionRows([data as RawTransactionRow])[0];
 }
 
+export async function updateManualTransaction(
+  supabase: SupabaseClient,
+  userId: string,
+  categories: CategoryRow[],
+  input: Required<Pick<ManualTransactionInput, "id">> & ManualTransactionInput,
+) {
+  const category = input.category_id ? categories.find((item) => item.id === input.category_id) : categoryForMerchant(input.merchant, categories);
+  const payload = {
+    category_id: category?.id ?? null,
+    amount: Math.abs(input.amount),
+    type: input.type,
+    date: input.date,
+    merchant: input.merchant.trim(),
+    note: input.note?.trim() || null,
+    ai_confidence: category ? 0.86 : null,
+  };
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(payload)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .select(transactionSelect)
+    .single();
+  if (error) throw new Error(error.message);
+  return normalizeTransactionRows([data as RawTransactionRow])[0];
+}
+
+export async function deleteTransaction(supabase: SupabaseClient, userId: string, id: string) {
+  const { error } = await supabase.from("transactions").delete().eq("user_id", userId).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateProfileSettings(supabase: SupabaseClient, userId: string, profile: Pick<ProfileSettings, "currency" | "locale">) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      currency: profile.currency.trim().toUpperCase().slice(0, 3),
+      locale: profile.locale.trim() || defaultProfile.locale,
+    })
+    .eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveCategory(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { id?: string; name: string; color: string; icon?: string },
+) {
+  const payload = {
+    user_id: userId,
+    name: input.name.trim(),
+    color: input.color,
+    icon: input.icon ?? "circle",
+  };
+  const query = input.id
+    ? supabase.from("categories").update(payload).eq("user_id", userId).eq("id", input.id)
+    : supabase.from("categories").insert(payload);
+  const { data, error } = await query.select("id, name, color, icon, is_system").single();
+  if (error) throw new Error(error.message);
+  return data as CategoryRow;
+}
+
+export async function deleteCategory(supabase: SupabaseClient, userId: string, id: string) {
+  const { error } = await supabase.from("categories").delete().eq("user_id", userId).eq("id", id).eq("is_system", false);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveBudget(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { id?: string; category_id: string; amount: number },
+) {
+  const payload = {
+    user_id: userId,
+    category_id: input.category_id,
+    amount: Math.abs(input.amount),
+    period: "monthly",
+    start_date: currentMonthStart(),
+    rollover: false,
+  };
+  const query = input.id
+    ? supabase.from("budgets").update({ amount: payload.amount }).eq("user_id", userId).eq("id", input.id)
+    : supabase.from("budgets").insert(payload);
+  const { data, error } = await query.select(budgetSelect).single();
+  if (error) throw new Error(error.message);
+  return normalizeBudgetRows([data as RawBudgetRow])[0];
+}
+
+export async function deleteBudget(supabase: SupabaseClient, userId: string, id: string) {
+  const { error } = await supabase.from("budgets").delete().eq("user_id", userId).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveGoal(
+  supabase: SupabaseClient,
+  userId: string,
+  input: { id?: string; name: string; target_amount: number; current_amount: number; target_date?: string | null },
+) {
+  const payload = {
+    user_id: userId,
+    name: input.name.trim(),
+    target_amount: Math.abs(input.target_amount),
+    current_amount: Math.abs(input.current_amount),
+    target_date: input.target_date || null,
+  };
+  const query = input.id
+    ? supabase.from("goals").update(payload).eq("user_id", userId).eq("id", input.id)
+    : supabase.from("goals").insert(payload);
+  const { data, error } = await query.select(goalSelect).single();
+  if (error) throw new Error(error.message);
+  return normalizeGoalRows([data as RawGoalRow])[0];
+}
+
+export async function deleteGoal(supabase: SupabaseClient, userId: string, id: string) {
+  const { error } = await supabase.from("goals").delete().eq("user_id", userId).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export function categoryForMerchant(merchant: string, categories: CategoryRow[]) {
   const categoryName = categorizeLocally(merchant);
   return (
@@ -271,6 +443,35 @@ function normalizeTransactionRows(rows: RawTransactionRow[]): TransactionRow[] {
         : null,
     };
   });
+}
+
+function normalizeBudgetRows(rows: RawBudgetRow[]): BudgetRow[] {
+  return rows.map((row) => {
+    const category = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+    return {
+      id: row.id,
+      category_id: row.category_id,
+      amount: Number(row.amount),
+      period: row.period,
+      start_date: row.start_date,
+      category: category?.name
+        ? {
+            name: category.name,
+            color: category.color ?? null,
+          }
+        : null,
+    };
+  });
+}
+
+function normalizeGoalRows(rows: RawGoalRow[]): GoalRow[] {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    target_amount: Number(row.target_amount),
+    current_amount: Number(row.current_amount),
+    target_date: row.target_date,
+  }));
 }
 
 async function existingImportedHashes(supabase: SupabaseClient, userId: string, hashes: string[]) {

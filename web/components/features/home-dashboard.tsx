@@ -22,6 +22,7 @@ import { InsightsCarousel } from "@/components/features/insights-carousel";
 import { ManualTransactionModal } from "@/components/features/manual-transaction-modal";
 import { MetricCard } from "@/components/features/metric-card";
 import { MobileNav } from "@/components/features/mobile-nav";
+import { AccountWorkspace, ActivityWorkspace, LocalInsightWorkspace, PlanWorkspace } from "@/components/features/product-workspace";
 import { RecentTransactions } from "@/components/features/recent-transactions";
 import { SpendingDonut } from "@/components/features/spending-donut";
 import { Button } from "@/components/ui/button";
@@ -256,10 +257,36 @@ export function HomeDashboard() {
               <RecentTransactions currency={profile.currency} locale={profile.locale} transactions={recentTransactions.slice(0, 5)} />
             </section>
 
+            <section className="mt-8">
+              <ActivityWorkspace
+                categories={categories}
+                currency={profile.currency}
+                locale={profile.locale}
+                onChanged={afterMutation}
+                rows={rows}
+                supabase={supabase}
+                userId={dashboard?.userId ?? null}
+              />
+            </section>
+
             <section className="mt-8 grid gap-4 sm:grid-cols-3" id="money-plan">
               <MetricCard currency={profile.currency} delta="this month" label="Income" locale={profile.locale} tone="income" value={metrics.income} />
               <MetricCard currency={profile.currency} delta="this month" label="Spend" locale={profile.locale} tone="expense" value={metrics.expenses} />
               <MetricCard currency={profile.currency} delta={`${savingsRate}% savings rate`} label="Saved" locale={profile.locale} tone="neutral" value={metrics.saved} />
+            </section>
+
+            <section className="mt-8">
+              <PlanWorkspace
+                budgets={dashboard?.budgets ?? []}
+                categories={categories}
+                currency={profile.currency}
+                goals={dashboard?.goals ?? []}
+                locale={profile.locale}
+                onChanged={afterMutation}
+                rows={rows}
+                supabase={supabase}
+                userId={dashboard?.userId ?? null}
+              />
             </section>
 
             <section className="mt-8 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -276,11 +303,23 @@ export function HomeDashboard() {
             </section>
 
             <section className="mt-8 grid gap-8 xl:grid-cols-[1fr_420px]" id="money-insights">
-              <InsightsCarousel insights={dashboard?.insights ?? []} />
-              <SecondaryActionCard onImport={requestImport} onScan={() => setManualOpen(true)} />
+              <div className="space-y-6">
+                <InsightsCarousel insights={dashboard?.insights ?? []} />
+                <LocalInsightWorkspace currency={profile.currency} locale={profile.locale} rows={rows} />
+              </div>
+              <SecondaryActionCard onImport={requestImport} onRecordReceipt={() => setManualOpen(true)} />
             </section>
 
             <section className="mt-8" id="account-tools">
+              <div className="mb-6">
+                <AccountWorkspace
+                  categories={categories}
+                  onChanged={afterMutation}
+                  profile={profile}
+                  supabase={supabase}
+                  userId={dashboard?.userId ?? null}
+                />
+              </div>
               <AccountDataPanel
                 currency={profile.currency}
                 deleting={deletingActivity}
@@ -397,19 +436,19 @@ function RecentMerchant({ merchant }: { merchant: RecentMerchantItem }) {
   );
 }
 
-function SecondaryActionCard({ onImport, onScan }: { onImport: () => void; onScan: () => void }) {
+function SecondaryActionCard({ onImport, onRecordReceipt }: { onImport: () => void; onRecordReceipt: () => void }) {
   return (
     <section className="rounded-card bg-card p-5 shadow-soft ring-1 ring-border/55">
       <h2 className="text-xl font-bold">Add activity</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">Bring in statements or receipts when you want a fuller money picture.</p>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">Bring in statements or receipt details when you want a fuller money picture.</p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
         <Button onClick={onImport} type="button" variant="secondary">
           <Download className="h-4 w-4" aria-hidden="true" />
           Import statement
         </Button>
-        <Button onClick={onScan} type="button" variant="secondary">
+        <Button onClick={onRecordReceipt} type="button" variant="secondary">
           <Camera className="h-4 w-4" aria-hidden="true" />
-          Add receipt
+          Record receipt
         </Button>
       </div>
     </section>
