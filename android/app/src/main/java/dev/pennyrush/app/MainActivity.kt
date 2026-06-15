@@ -441,7 +441,7 @@ private suspend fun deleteAccount(accessToken: String, supabase: io.github.jan.s
     withContext(Dispatchers.IO) {
         OkHttpClient().newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val body = response.body?.string()?.takeIf { it.isNotBlank() }
+                val body = response.body.string().takeIf { it.isNotBlank() }
                 error(body ?: "Account deletion failed with HTTP ${response.code}")
             }
         }
