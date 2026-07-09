@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pennyrush.dev"),
+  metadataBase: new URL("https://pennyrush.agentpostmortem.workers.dev"),
   title: {
     default: "PennyRush",
     template: "%s | PennyRush",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     title: "PennyRush",
     description:
       "A private money hub for activity, receipt scans, imports, plans, and spending insights.",
-    url: "https://pennyrush.dev",
+    url: "https://pennyrush.agentpostmortem.workers.dev",
     siteName: "PennyRush",
     type: "website",
   },

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = "https://pennyrush.dev";
+const siteUrl = "https://pennyrush.agentpostmortem.workers.dev";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date("2026-06-03");
