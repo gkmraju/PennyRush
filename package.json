@@ -16,13 +16,15 @@
     "web"
   ],
   "overrides": {
-    "postcss": "8.5.14",
-    "@types/react": "19.2.16",
-    "@types/react-dom": "19.2.3"
+    "postcss": "8.5.25",
+    "sharp": "$sharp",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@types/react": "19.2.16",
-    "@types/react-dom": "19.2.3"
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "sharp": "0.35.3"
   },
   "scripts": {
     "release:audit-android": "node scripts/audit-android-artifacts.mjs",
