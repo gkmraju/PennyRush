@@ -6,8 +6,6 @@ PennyRush is a privacy-first personal finance tracker with a native Android app,
 
 Repository: https://github.com/royalpinto007/PennyRush
 
-Live web app: https://pennyrush.agentpostmortem.workers.dev (temporary Cloudflare Workers URL; `pennyrush.dev` is not currently active). Deploy the web app with `cd web && npx opennextjs-cloudflare build && npx wrangler deploy`.
-
 ## What Is In This Repo
 
 - `web/`: Next.js App Router companion app with authentication, activity dashboard, manual entries, CSV import, privacy/terms pages, and export/delete controls.
