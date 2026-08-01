@@ -22,7 +22,7 @@ updates:
       - dependency-name: "com.android.library"
         update-types: ["version-update:semver-major"]
       - dependency-name: "androidx.lifecycle:*"
-        versions: ["2.11.*"]
+        update-types: ["version-update:semver-minor"]
       - dependency-name: "gradle-wrapper"
         update-types: ["version-update:semver-major"]
 
