@@ -19,7 +19,10 @@
     "postcss": "8.5.25",
     "sharp": "$sharp",
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.4"
+    "@types/react-dom": "19.2.4",
+    "miniflare": {
+      "undici": "7.29.0"
+    }
   },
   "devDependencies": {
     "@types/react": "19.2.18",
