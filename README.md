@@ -1,10 +1,77 @@
 # PennyRush
 
-A private money hub for activity, receipt scans, imports, plans, and spending insights.
+See where the money actually went, without handing your statements to an
+advertising business.
 
-PennyRush is a privacy-first personal finance tracker with a native Android app, a companion web app, and one Supabase backend. Statement files and receipt images are processed for extraction; raw files are not uploaded to app storage or kept by the clients. Only saved activity fields such as amount, date, merchant, note, type, and category are stored.
+PennyRush is a personal finance tracker with a native Android app, a companion
+web app, and one Supabase backend. Statement files and receipt images are read
+for the fields you choose to save and then dropped. What is stored is the entry
+itself: amount, date, merchant, note, type, category.
 
-Repository: https://github.com/royalpinto007/PennyRush
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-Kotlin%20%2B%20Compose-B4531B.svg)](android/app/build.gradle.kts)
+[![Web](https://img.shields.io/badge/Web-Next.js-B4531B.svg)](web)
+[![Privacy](https://img.shields.io/badge/Raw%20files-never%20stored-F0A16A.svg)](#privacy)
+
+<!-- media:start -->
+
+<p align="center">
+  <img src="docs/media/logo.png" width="96" alt="PennyRush logo">
+</p>
+
+<h3 align="center">Your money, in one private hub.</h3>
+
+## Screenshots
+
+![The balance, the quick actions, and what happened last.](docs/media/1-home.webp)
+
+<sub>The balance, the quick actions, and what happened last.</sub>
+
+<details>
+<summary><b>See 3 more</b></summary>
+
+### Activity
+
+![Everything you have saved, searchable.](docs/media/2-activity.webp)
+
+<sub>Everything you have saved, searchable.</sub>
+
+### Plan
+
+![Budgets by category, showing what is left rather than what is gone.](docs/media/3-plan.webp)
+
+<sub>Budgets by category, showing what is left rather than what is gone.</sub>
+
+### Insights
+
+![Cashflow for the month, and nothing at all when there is no activity to judge.](docs/media/4-insights.webp)
+
+<sub>Cashflow for the month, and nothing at all when there is no activity to
+judge. A month with no entries is not a tight month.</sub>
+
+</details>
+
+<sub>Captured from the app running on a physical device, against a test account
+whose most recent activity is a couple of months old. That is why the merchant
+ranking is absent and Insights reads "No activity yet".</sub>
+
+<!-- media:end -->
+
+## Privacy
+
+The claim is narrow enough to keep:
+
+- **CSV import** parses the file in your browser. The raw statement is never
+  uploaded to storage.
+- **Receipt scan** reads the image to fill in the entry for you to check. The
+  entry is saved; the image is not kept afterwards.
+- **No advertising SDKs, no paid analytics SDKs, no tracking pixels**, and none
+  of your data is sold.
+- **Export everything as CSV** whenever you want it, and delete your account
+  and its data from either client.
+
+The one host the app talks to is its own Supabase project, plus Google for
+sign-in. Full policy: [privacy.signalizeai.org/pennyrush](https://privacy.signalizeai.org/pennyrush).
 
 ## What Is In This Repo
 

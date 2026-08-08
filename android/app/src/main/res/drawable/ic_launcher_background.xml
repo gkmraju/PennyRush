@@ -12,13 +12,17 @@
                 android:startY="108"
                 android:endX="108"
                 android:endY="0"
-                android:startColor="#059669"
-                android:endColor="#34D399" />
+                android:startColor="#B4531B"
+                android:endColor="#F0A16A" />
         </aapt:attr>
     </path>
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54,54 m-50,0 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0"
-        android:strokeColor="#0F172A"
-        android:strokeWidth="2" />
+    <!--
+        Copper, the same two values the app theme is built from: Copper for
+        primary and CopperBright for the accents. The icon used to be an
+        emerald gradient, which meant the thing on the home screen and the
+        thing that opened from it looked like two different apps.
+
+        The slate ring came from that green palette and had nothing to stand
+        on once the ground changed, so it is gone rather than recoloured.
+    -->
 </vector>
