@@ -16,13 +16,13 @@
     "web"
   ],
   "overrides": {
-    "postcss": "8.5.25",
-    "sharp": "$sharp",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "miniflare": {
       "undici": "7.29.0"
-    }
+    },
+    "postcss": "8.5.26",
+    "sharp": "$sharp"
   },
   "devDependencies": {
     "@types/react": "19.2.18",
