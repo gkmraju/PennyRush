@@ -20,6 +20,17 @@ import androidx.core.content.FileProvider
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import dev.pennyrush.core.designsystem.LocalIsDarkTheme
+import dev.pennyrush.core.designsystem.LocalMoneyColors
+import dev.pennyrush.core.designsystem.MoneyTextStyle
+import dev.pennyrush.core.designsystem.Radius
+import dev.pennyrush.core.designsystem.Sizing
+import dev.pennyrush.core.designsystem.Space
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,6 +42,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -155,17 +167,12 @@ import kotlin.coroutines.resumeWithException
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 
-private val CardShape = RoundedCornerShape(24.dp)
-private val ButtonShape = RoundedCornerShape(999.dp)
-private val ChipShape = RoundedCornerShape(999.dp)
-private val InputShape = RoundedCornerShape(22.dp)
-private val ButtonHeight = 52.dp
-private val LightIncome = Color(0xFF047857)
-private val LightExpense = Color(0xFFD43D51)
-private val LightSky = Color(0xFF2563EB)
-private val LightViolet = Color(0xFF7C3AED)
-private val LightAmber = Color(0xFFC87600)
-private val LightSlate = Color(0xFF52645B)
+private val CardShape = RoundedCornerShape(Radius.card)
+private val TileShape = RoundedCornerShape(Radius.tile)
+private val ButtonShape = RoundedCornerShape(Radius.chip)
+private val ChipShape = RoundedCornerShape(Radius.chip)
+private val InputShape = RoundedCornerShape(Radius.field)
+private val ButtonHeight = Sizing.button
 private const val PlanningPrefs = "pennyrush_planning"
 private const val PlanningGoalsKey = "goals"
 private val CurrencyChoices = listOf("INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD", "CAD")
@@ -181,41 +188,33 @@ private data class FinancePalette(
     val darkMode: Boolean,
 )
 
+/*
+ * Kept as a struct so every existing screen picks up the new look without being
+ * rewritten, but the values now come from the theme instead of being hardcoded
+ * twice. income and expense are the real signals; the rest are a tonal ramp,
+ * not a rainbow, so category dots read as one family.
+ */
 @Composable
 private fun financePalette(): FinancePalette {
-    val darkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (darkMode) {
-        FinancePalette(
-            income = Color(0xFF5EEAD4),
-            expense = Color(0xFFFB7185),
-            sky = Color(0xFF93C5FD),
-            violet = Color(0xFFC4B5FD),
-            amber = Color(0xFFFCD34D),
-            transfer = Color(0xFF67E8F9),
-            slate = Color(0xFFCBD5E1),
-            darkMode = true,
-        )
-    } else {
-        FinancePalette(
-            income = LightIncome,
-            expense = LightExpense,
-            sky = LightSky,
-            violet = LightViolet,
-            amber = LightAmber,
-            transfer = Color(0xFF0891B2),
-            slate = LightSlate,
-            darkMode = false,
-        )
-    }
+    val money = LocalMoneyColors.current
+    val ramp = money.ramp
+    return FinancePalette(
+        income = money.income,
+        expense = money.expense,
+        sky = ramp[2],
+        violet = ramp[4],
+        amber = money.warning,
+        transfer = ramp[5],
+        slate = money.neutral,
+        darkMode = LocalIsDarkTheme.current,
+    )
 }
 
 @Composable
-private fun appSurface(): Color =
-    if (financePalette().darkMode) Color(0xFF121A17) else Color.White
+private fun appSurface(): Color = MaterialTheme.colorScheme.surface
 
 @Composable
-private fun softSurface(): Color =
-    if (financePalette().darkMode) Color(0xFF1B2621) else Color(0xFFEFF6F2)
+private fun softSurface(): Color = MaterialTheme.colorScheme.surfaceContainer
 
 private fun money(amount: Double, showSign: Boolean = false): String =
     MoneyFormatter.format(
@@ -230,15 +229,23 @@ private fun compactMoney(amount: Double): String =
 @Composable
 private fun Modifier.enterMotion(delayMillis: Int = 0): Modifier {
     var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(Unit) {
+        if (delayMillis > 0) delay(delayMillis.toLong())
+        visible = true
+    }
+    // Spring rather than a fixed tween: content that settles reads as physical,
+    // and staggering by index makes a list arrive instead of blinking on.
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 420, delayMillis = delayMillis, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
         label = "entryAlpha",
     )
     val y by animateFloatAsState(
-        targetValue = if (visible) 0f else 18f,
-        animationSpec = tween(durationMillis = 420, delayMillis = delayMillis, easing = FastOutSlowInEasing),
+        targetValue = if (visible) 0f else 14f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
         label = "entryY",
     )
     return graphicsLayer {
@@ -256,14 +263,19 @@ private fun PrCard(
     color: Color = MaterialTheme.colorScheme.surface,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val containerColor = if (color == MaterialTheme.colorScheme.surface) appSurface() else color
+    // Depth comes from tone, not from an outline and a drop shadow stacked on
+    // every card. The old version had both on all 40-odd surfaces, which is
+    // what made the app read as a grid of boxes rather than a page.
+    val containerColor = if (color == MaterialTheme.colorScheme.surface) {
+        if (LocalIsDarkTheme.current) MaterialTheme.colorScheme.surfaceContainer else appSurface()
+    } else {
+        color
+    }
     Surface(
         modifier = modifier,
         shape = CardShape,
         color = containerColor,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)),
-        shadowElevation = if (financePalette().darkMode) 0.dp else 2.dp,
-        tonalElevation = if (financePalette().darkMode) 1.dp else 0.dp,
+        shadowElevation = if (LocalIsDarkTheme.current) 0.dp else 1.dp,
     ) {
         Column(modifier = Modifier.padding(padding.dp), content = content)
     }
@@ -292,10 +304,7 @@ private fun ScreenTitle(
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.sp,
-            ),
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
         )
         subtitle?.let {
@@ -393,7 +402,6 @@ private fun PrSecondaryButton(
         onClick = onClick,
         modifier = modifier.height(ButtonHeight),
         shape = ButtonShape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = softSurface(),
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -413,7 +421,6 @@ private fun KindChip(kind: TransactionKind) {
     Surface(
         shape = ChipShape,
         color = tint.copy(alpha = 0.12f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.18f)),
     ) {
         Text(
             text = label,
@@ -672,21 +679,6 @@ fun HomeRoute(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
-            if (selectedDestination == HomeDestination.Home) {
-                FloatingActionButton(
-                    onClick = { showAddSheet = true },
-                    shape = RoundedCornerShape(24.dp),
-                    containerColor = palette.income,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = "Add entry",
-                    )
-                }
-            }
-        },
         bottomBar = {
             HomeBottomBar(
                 selectedDestination = selectedDestination,
@@ -845,8 +837,12 @@ private fun HomeContent(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+            .padding(horizontal = Space.lg),
+        verticalArrangement = Arrangement.spacedBy(Space.lg),
+        // Scaffold reserves room for the bottom bar but not for a floating
+        // action button, so without this the FAB covers the last row's amount.
+        // Clears the floating bottom bar so the last row is never under it.
+        contentPadding = PaddingValues(bottom = Space.xxl),
     ) {
         item { Spacer(modifier = Modifier.height(10.dp)) }
         item {
@@ -890,7 +886,7 @@ private fun HomeContent(
                 )
             }
             item {
-                RecentMerchantsStrip(
+                TopMerchantsStrip(
                     transactions = transactions,
                     onOpenActivity = onSearchActivity,
                     modifier = Modifier.enterMotion(180),
@@ -938,7 +934,6 @@ private fun HomeSearchHeader(
                 .height(56.dp),
             shape = RoundedCornerShape(28.dp),
             color = softSurface(),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
             onClick = onSearchActivity,
         ) {
             Row(
@@ -951,6 +946,9 @@ private fun HomeSearchHeader(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // The signed-in name used to sit at the right-hand end of this
+                // field, which read as text somebody had typed into the search
+                // box. The avatar beside it already says whose account this is.
                 Text(
                     text = "Search activity",
                     modifier = Modifier.weight(1f),
@@ -958,14 +956,6 @@ private fun HomeSearchHeader(
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                 )
-                userName?.substringBefore(' ')?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        maxLines = 1,
-                    )
-                }
             }
         }
         ProfileAvatar(
@@ -984,7 +974,6 @@ private fun SyncStatusCard(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.16f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -1033,7 +1022,6 @@ private fun ProfileAvatar(
             },
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
         onClick = { sheetOpen = true },
     ) {
         if (!userAvatarUrl.isNullOrBlank()) {
@@ -1071,7 +1059,6 @@ private fun ProfileAvatar(
                         modifier = Modifier.size(64.dp),
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
                     ) {
                         if (!userAvatarUrl.isNullOrBlank()) {
                             AsyncImage(
@@ -1149,7 +1136,6 @@ private fun EmptyHomeCard(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
         shadowElevation = 1.dp,
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -1203,7 +1189,6 @@ private fun HomeLoadingCard(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
         shadowElevation = 1.dp,
     ) {
         Column(
@@ -1236,7 +1221,6 @@ private fun OnboardingStep(number: String, label: String) {
     Surface(
         shape = ButtonShape,
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
         Row(
             modifier = Modifier
@@ -1291,20 +1275,15 @@ private fun WalletHero(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
-        shadowElevation = if (palette.darkMode) 0.dp else 3.dp,
-        tonalElevation = if (palette.darkMode) 2.dp else 0.dp,
+        shadowElevation = if (palette.darkMode) 0.dp else 2.dp,
     ) {
         Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .background(palette.income),
-            )
+            // The old hero opened with a 5dp green stripe across the top. It
+            // dated the whole screen and said nothing the balance below does
+            // not already say.
             Column(
-                modifier = Modifier.padding(22.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(Space.xl),
+                verticalArrangement = Arrangement.spacedBy(Space.lg),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1315,28 +1294,18 @@ private fun WalletHero(
                         Text(
                             text = accountName.uppercase(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 0.7.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = "PennyRush wallet",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
+                            style = MaterialTheme.typography.labelSmall,
                         )
                     }
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
+                        shape = ChipShape,
                         color = MaterialTheme.colorScheme.primaryContainer,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
                     ) {
                         Text(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            text = "INR",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            // Was hardcoded to INR, so it lied for anyone who
+                            // changed the currency in settings.
+                            text = AppPreferences.currencyCode,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -1349,11 +1318,8 @@ private fun WalletHero(
                 Text(
                     text = money(net),
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.sp,
-                    ),
-                    maxLines = 2,
+                    style = MaterialTheme.typography.displayMedium.merge(MoneyTextStyle).merge(MoneyTextStyle),
+                    maxLines = 1,
                 )
 
                 if (thisMonth.isNotEmpty()) {
@@ -1365,9 +1331,9 @@ private fun WalletHero(
                             modifier = Modifier.weight(1f),
                         )
                         GlassStat(
-                            label = "Saved",
-                            value = "${(savingsRate * 100).toInt()}%",
-                            tint = palette.sky,
+                            label = "Spent",
+                            value = money(expenses),
+                            tint = palette.expense,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -1426,7 +1392,6 @@ private fun HeroMetric(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
         color = tint.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.22f)),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -1486,7 +1451,7 @@ private fun QuickActionTile(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(18.dp))
+            .clip(TileShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1494,26 +1459,25 @@ private fun QuickActionTile(
                 onClick = onClick,
             )
             .padding(vertical = 2.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = tint.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.18f)),
+        shape = TileShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = Space.sm, vertical = Space.md),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(Space.sm),
         ) {
             Surface(
                 modifier = Modifier.size(42.dp),
                 shape = CircleShape,
-                color = tint.copy(alpha = 0.16f),
+                color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = icon,
                         contentDescription = label,
-                        modifier = Modifier.size(21.dp),
-                        tint = tint,
+                        modifier = Modifier.size(Sizing.icon),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }
@@ -1528,17 +1492,53 @@ private fun QuickActionTile(
     }
 }
 
+/**
+ * Where this month's spending actually went.
+ *
+ * This strip used to list the most recent distinct merchants as initials in
+ * circles, directly above a list of the most recent transactions. It was the
+ * same data twice, and the top copy carried less of it: no amounts, no dates,
+ * and a tap target that went to the same place as the list below. It occupied
+ * the best strip on the screen and told you nothing.
+ *
+ * Ranking by what was spent this month is information the list underneath
+ * cannot give, because the list is ordered by time. The two now answer
+ * different questions: what happened last, and what is costing you most.
+ */
 @Composable
-private fun RecentMerchantsStrip(
+private fun TopMerchantsStrip(
     transactions: List<Transaction>,
     onOpenActivity: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val merchants = transactions
-        .sortedByDescending { it.date }
-        .distinctBy { it.merchant.lowercase().trim() }
-        .take(10)
-    if (merchants.isEmpty()) return
+    val palette = financePalette()
+    // Ranked over the most recent month that actually has spending, not
+    // strictly the current one. Somebody who imports a statement on the 2nd of
+    // the month would otherwise open the app to a blank strip where the
+    // headline figure should be, which reads as the app having lost their data.
+    val spending = remember(transactions) { transactions.filter { it.amount < 0 } }
+    val month = remember(spending) { spending.maxOfOrNull { YearMonth.from(it.date) } }
+    val top = remember(spending, month) {
+        if (month == null) {
+            emptyList()
+        } else {
+            spending
+                .filter { YearMonth.from(it.date) == month }
+                .groupBy { it.merchant.trim().ifBlank { "Unknown" } }
+                .map { (merchant, rows) -> merchant to rows.sumOf { abs(it.amount) } }
+                .sortedByDescending { it.second }
+                .take(8)
+        }
+    }
+    // A ranking of one merchant is not a ranking, and the activity list below
+    // already says everything there is to say about a month with two entries.
+    if (month == null || top.size < 3) return
+    val heading = if (month == YearMonth.now()) {
+        "Top this month"
+    } else {
+        // Fully qualified: Compose has a TextStyle of its own and it is imported here.
+        "Top in ${month.month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.getDefault())}"
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -1550,19 +1550,21 @@ private fun RecentMerchantsStrip(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Recent",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                text = heading,
+                style = MaterialTheme.typography.titleLarge,
             )
             TextButton(onClick = onOpenActivity) {
-                Text("View all", fontWeight = FontWeight.SemiBold)
+                Text("See all", fontWeight = FontWeight.SemiBold)
             }
         }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(merchants) { transaction ->
-                RecentMerchantChip(
-                    transaction = transaction,
+            items(top, key = { it.first }) { (merchant, spent) ->
+                TopMerchantChip(
+                    merchant = merchant,
+                    spent = spent,
+                    tint = palette.expense,
                     onClick = onOpenActivity,
                 )
             }
@@ -1571,14 +1573,15 @@ private fun RecentMerchantsStrip(
 }
 
 @Composable
-private fun RecentMerchantChip(
-    transaction: Transaction,
+private fun TopMerchantChip(
+    merchant: String,
+    spent: Double,
+    tint: Color,
     onClick: () -> Unit,
 ) {
-    val tint = accentForKind(transaction.kind)
     Column(
         modifier = Modifier
-            .width(76.dp)
+            .width(84.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 4.dp),
@@ -1589,22 +1592,29 @@ private fun RecentMerchantChip(
             modifier = Modifier.size(56.dp),
             shape = CircleShape,
             color = tint.copy(alpha = 0.12f),
-            border = BorderStroke(1.dp, tint.copy(alpha = 0.16f)),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
-                    text = transaction.merchant.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "?",
+                    text = merchant.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "?",
                     color = tint,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    style = MaterialTheme.typography.titleMedium,
                 )
             }
         }
         Text(
-            text = transaction.merchant,
+            text = merchant,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        // The amount is the reason this strip exists, so it is never dropped.
+        Text(
+            text = money(spent),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium.merge(MoneyTextStyle),
+            maxLines = 1,
             textAlign = TextAlign.Center,
         )
     }
@@ -1628,7 +1638,7 @@ private fun RecentActivityCard(
         ) {
             Text(
                 text = "Latest activity",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                style = MaterialTheme.typography.titleLarge,
             )
             TextButton(onClick = onViewAll) {
                 Text("See all", fontWeight = FontWeight.SemiBold)
@@ -1674,7 +1684,7 @@ private fun CompactActivityRow(
                 Text(
                     text = transaction.merchant.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "?",
                     color = accent,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    style = MaterialTheme.typography.titleSmall,
                 )
             }
         }
@@ -1699,7 +1709,7 @@ private fun CompactActivityRow(
         Text(
             text = money(transaction.amount, showSign = true),
             color = if (transaction.amount >= 0) palette.income else palette.expense,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).merge(MoneyTextStyle),
             maxLines = 1,
         )
     }
@@ -1749,7 +1759,6 @@ private fun StatCard(
         modifier = modifier,
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
         shadowElevation = 1.dp,
     ) {
         Column(
@@ -1788,7 +1797,7 @@ private fun StatCard(
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.sp,
-                ),
+                ).merge(MoneyTextStyle),
                 maxLines = 2,
             )
             Text(
@@ -1891,7 +1900,7 @@ private fun SpendingBreakdown(
                             text = compactMoney(amount),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                            ),
+                            ).merge(MoneyTextStyle),
                         )
                     }
                 }
@@ -1923,7 +1932,6 @@ private fun TransactionRow(
         modifier = rowModifier,
         shape = RoundedCornerShape(22.dp),
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)),
         shadowElevation = if (palette.darkMode) 0.dp else 1.dp,
     ) {
         Row(
@@ -1972,7 +1980,7 @@ private fun TransactionRow(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.sp,
-                ),
+                ).merge(MoneyTextStyle),
                 color = if (transaction.amount > 0) palette.income else palette.expense,
             )
         }
@@ -1981,13 +1989,12 @@ private fun TransactionRow(
 
 @Composable
 private fun SectionLabel(text: String) {
+    // Caps and tracking, used only here. A section header that looks like body
+    // text makes a long scroll read as one undifferentiated column.
     Text(
-        text = text,
+        text = text.uppercase(),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.labelMedium.copy(
-            letterSpacing = 0.sp,
-            fontWeight = FontWeight.SemiBold,
-        ),
+        style = MaterialTheme.typography.labelSmall,
     )
 }
 
@@ -1998,52 +2005,87 @@ private fun HomeBottomBar(
     selectedDestination: HomeDestination,
     onDestinationSelected: (HomeDestination) -> Unit,
 ) {
-    Surface(
-        color = appSurface(),
-        tonalElevation = if (financePalette().darkMode) 2.dp else 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)),
+    /*
+     * A floating pill rather than a full-width bar welded to the bottom edge.
+     * The selected tab gets a filled capsule that carries its label; the rest
+     * are icon-only. That is the current Material direction and it also means
+     * the bar stops competing with the content above it.
+     */
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = Space.lg, vertical = Space.md),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            shape = RoundedCornerShape(Radius.chip),
+            color = if (LocalIsDarkTheme.current) {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            shadowElevation = if (LocalIsDarkTheme.current) 0.dp else 6.dp,
         ) {
-            HomeDestination.entries.forEach { destination ->
-                val selected = destination == selectedDestination
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(58.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable(role = Role.Tab) { onDestinationSelected(destination) }
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    ) {
-                        Icon(
-                            imageVector = destination.icon,
-                            contentDescription = destination.label,
-                            tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp).size(20.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = destination.label,
-                        color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            letterSpacing = 0.sp,
-                        ),
-                        maxLines = 1,
+            Row(
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HomeDestination.entries.forEach { destination ->
+                    val selected = destination == selectedDestination
+                    val containerColor by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            Color.Transparent
+                        },
+                        animationSpec = tween(220),
+                        label = "tabContainer",
                     )
+                    val contentColor by animateColorAsState(
+                        targetValue = if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        animationSpec = tween(220),
+                        label = "tabContent",
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(Radius.chip),
+                        color = containerColor,
+                        modifier = Modifier
+                            .heightIn(min = Sizing.touchTarget)
+                            .clip(RoundedCornerShape(Radius.chip))
+                            .clickable(role = Role.Tab) { onDestinationSelected(destination) },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = if (selected) 16.dp else 14.dp,
+                                vertical = 12.dp,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Space.sm),
+                        ) {
+                            Icon(
+                                imageVector = destination.icon,
+                                contentDescription = destination.label,
+                                tint = contentColor,
+                                modifier = Modifier.size(Sizing.icon),
+                            )
+                            // Only the active tab is labelled. Five permanent
+                            // labels at 11sp is noise nobody reads after day one.
+                            AnimatedVisibility(visible = selected) {
+                                Text(
+                                    text = destination.label,
+                                    color = contentColor,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2201,6 +2243,7 @@ private fun PlanningContent(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item { Spacer(modifier = Modifier.height(10.dp)) }
         item {
@@ -2350,7 +2393,6 @@ private fun PlanHero(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
         shadowElevation = if (palette.darkMode) 0.dp else 2.dp,
         tonalElevation = if (palette.darkMode) 2.dp else 0.dp,
     ) {
@@ -2388,7 +2430,7 @@ private fun PlanHero(
                 text = if (overPlan) money(abs(remaining)) else money(remaining),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.sp,
                 ),
                 maxLines = 2,
@@ -2415,8 +2457,8 @@ private fun PlanHero(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassStat("Spent", compactMoney(spent), if (overPlan) palette.expense else palette.sky, Modifier.weight(1f))
-                GlassStat("Budget", compactMoney(limit), palette.income, Modifier.weight(1f))
+                GlassStat("Spent", compactMoney(spent), if (overPlan) palette.expense else MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                GlassStat("Budget", compactMoney(limit), MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
             }
         }
     }
@@ -2487,19 +2529,19 @@ private fun PlanHealthStrip(
         PlanHealthTile(
             label = "Watch",
             value = overBudget.toString(),
-            tint = if (overBudget > 0) palette.expense else palette.income,
+            tint = if (overBudget > 0) palette.expense else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         PlanHealthTile(
             label = "Goals",
             value = goalCount.toString(),
-            tint = palette.sky,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         PlanHealthTile(
             label = "Recurring",
             value = recurringCount.toString(),
-            tint = palette.violet,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
     }
@@ -2514,27 +2556,23 @@ private fun PlanHealthTile(
 ) {
     Surface(
         modifier = modifier.heightIn(min = 84.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = tint.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.22f)),
+        shape = TileShape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(13.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(Space.lg),
+            verticalArrangement = Arrangement.spacedBy(Space.xs),
         ) {
             Text(
                 text = label,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,
             )
             Text(
                 text = value,
                 color = tint,
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.sp,
-                ),
+                style = MaterialTheme.typography.headlineSmall.merge(MoneyTextStyle),
                 maxLines = 1,
             )
         }
@@ -2596,7 +2634,6 @@ private fun BudgetProgressRow(
             .clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -2744,7 +2781,6 @@ private fun SavedGoalRow(
             .clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -2889,7 +2925,7 @@ private fun RecurringSpendCard(
                     }
                     Text(
                         text = compactMoney(row.averageAmount),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).merge(MoneyTextStyle),
                     )
                 }
                 if (index != rows.lastIndex) {
@@ -3124,7 +3160,6 @@ private fun EmptyActivityCard(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)),
     ) {
         Column(
             modifier = Modifier.padding(22.dp),
@@ -3159,7 +3194,6 @@ private fun TransactionsSummaryCard(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
         shadowElevation = if (financePalette().darkMode) 0.dp else 2.dp,
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -3179,14 +3213,13 @@ private fun TransactionsSummaryCard(
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.sp,
-                    ),
+                    ).merge(MoneyTextStyle),
                     color = if (net >= 0) palette.income else palette.expense,
                 )
             }
             Surface(
                 shape = RoundedCornerShape(999.dp),
                 color = appSurface(),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)),
             ) {
                 Text(
                     text = "${transactions.size} ${if (transactions.size == 1) "entry" else "entries"}",
@@ -3216,7 +3249,6 @@ private fun CompactMoneyPill(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = tint.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.22f)),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -3227,7 +3259,7 @@ private fun CompactMoneyPill(
             Text(
                 text = compactMoney(amount),
                 color = tint,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).merge(MoneyTextStyle),
                 maxLines = 2,
             )
         }
@@ -3269,6 +3301,7 @@ private fun InsightsContent(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item { Spacer(modifier = Modifier.height(10.dp)) }
         item {
@@ -3329,18 +3362,24 @@ private fun InsightHero(
     val income = monthRows.filter { it.amount > 0 }.sumOf { it.amount }
     val expenses = monthRows.filter { it.amount < 0 }.sumOf { abs(it.amount) }
     val net = income - expenses
+    // A month with nothing in it is not a tight month. Scoring zero income
+    // against zero spending landed in the bottom bucket and reported "Tight" to
+    // anybody who opened the app before their first entry of the month, which
+    // is a claim about their finances made from no evidence at all.
+    val hasActivity = monthRows.isNotEmpty()
     val score = when {
         income <= 0.0 && expenses <= 0.0 -> 0.0
         income <= 0.0 -> 0.18
         else -> ((income - expenses) / income).coerceIn(0.0, 1.0)
     }
     val label = when {
+        !hasActivity -> "No activity yet"
         score >= 0.35 -> "Healthy"
         score >= 0.15 -> "Watchful"
         else -> "Tight"
     }
     val scoreProgress by animateFloatAsState(
-        targetValue = score.toFloat().coerceIn(0.05f, 1f),
+        targetValue = if (hasActivity) score.toFloat().coerceIn(0.05f, 1f) else 0f,
         animationSpec = tween(durationMillis = 720, easing = FastOutSlowInEasing),
         label = "cashflowScore",
     )
@@ -3349,7 +3388,6 @@ private fun InsightHero(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
         shadowElevation = if (palette.darkMode) 0.dp else 2.dp,
         tonalElevation = if (palette.darkMode) 2.dp else 0.dp,
     ) {
@@ -3373,16 +3411,25 @@ private fun InsightHero(
                 Text(
                     text = label,
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.sp,
-                    ),
+                    // The empty-state wording is a sentence, not a one-word
+                    // verdict, so it drops a size rather than wrapping.
+                    style = if (hasActivity) {
+                        MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.sp,
+                        )
+                    } else {
+                        MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    },
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                Text(
-                    text = money(net, showSign = true),
-                    color = if (net >= 0) palette.income else palette.expense,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                )
+                if (hasActivity) {
+                    Text(
+                        text = money(net, showSign = true),
+                        color = if (net >= 0) palette.income else palette.expense,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold).merge(MoneyTextStyle),
+                    )
+                }
             }
             Box(
                 modifier = Modifier
@@ -3409,21 +3456,23 @@ private fun InsightHero(
 private fun GlassStat(label: String, value: String, tint: Color, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = tint.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.16f)),
+        shape = RoundedCornerShape(Radius.field),
+        // Neutral container. Tinting the box as well as the figure meant three
+        // stats side by side read as three unrelated states.
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(Space.md)) {
             Text(
                 text = label,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelSmall,
             )
+            Spacer(Modifier.height(Space.xs))
             Text(
                 text = value,
                 color = tint,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                maxLines = 2,
+                style = MaterialTheme.typography.titleLarge.merge(MoneyTextStyle),
+                maxLines = 1,
             )
         }
     }
@@ -3478,7 +3527,7 @@ private fun SpendingBarsCard(
                     Text(
                         text = compactMoney(amount),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold).merge(MoneyTextStyle),
                     )
                 }
                 Spacer(Modifier.height(6.dp))
@@ -3712,6 +3761,7 @@ private fun AccountContent(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item { Spacer(modifier = Modifier.height(10.dp)) }
         item {
@@ -4332,7 +4382,6 @@ private fun CategoryCountPill(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -4361,7 +4410,6 @@ private fun DataHealthMetric(label: String, value: String, modifier: Modifier = 
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -4400,7 +4448,6 @@ private fun SettingsGroup(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
         shadowElevation = 1.dp,
     ) {
         Column(content = content)
@@ -4459,7 +4506,6 @@ private fun SettingsIconTile(icon: ImageVector) {
         modifier = Modifier.size(36.dp),
         shape = CircleShape,
         color = softSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
@@ -4504,7 +4550,6 @@ private fun ProfileCard(
                 modifier = Modifier.size(72.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
             ) {
                 if (!userAvatarUrl.isNullOrBlank()) {
                     AsyncImage(
@@ -5096,7 +5141,6 @@ private fun ReceiptImagePreview(uri: Uri) {
         modifier = Modifier.fillMaxWidth(),
         shape = CardShape,
         color = appSurface(),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
     ) {
         AsyncImage(
             model = uri,
