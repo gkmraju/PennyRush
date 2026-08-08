@@ -23,37 +23,31 @@ itself: amount, date, merchant, note, type, category.
 
 ## Screenshots
 
-![The balance, the quick actions, and what happened last.](docs/media/1-home.webp)
+<table>
+  <tr>
+    <td width="25%" valign="top">
+      <img src="docs/media/1-home.webp" width="100%" alt="The balance, the quick actions, and what happened last.">
+      <sub><b>Home.</b> The balance, the quick actions, and what happened last.</sub>
+    </td>
+    <td width="25%" valign="top">
+      <img src="docs/media/2-activity.webp" width="100%" alt="Everything you have saved, searchable.">
+      <sub><b>Activity.</b> Everything you have saved, searchable.</sub>
+    </td>
+    <td width="25%" valign="top">
+      <img src="docs/media/3-plan.webp" width="100%" alt="Budgets by category, showing what is left rather than what is gone.">
+      <sub><b>Plan.</b> Budgets showing what is left, not what is gone.</sub>
+    </td>
+    <td width="25%" valign="top">
+      <img src="docs/media/4-insights.webp" width="100%" alt="Cashflow for the month, and nothing at all when there is no activity to judge.">
+      <sub><b>Insights.</b> No verdict at all when there is no activity to judge.</sub>
+    </td>
+  </tr>
+</table>
 
-<sub>The balance, the quick actions, and what happened last.</sub>
-
-<details>
-<summary><b>See 3 more</b></summary>
-
-### Activity
-
-![Everything you have saved, searchable.](docs/media/2-activity.webp)
-
-<sub>Everything you have saved, searchable.</sub>
-
-### Plan
-
-![Budgets by category, showing what is left rather than what is gone.](docs/media/3-plan.webp)
-
-<sub>Budgets by category, showing what is left rather than what is gone.</sub>
-
-### Insights
-
-![Cashflow for the month, and nothing at all when there is no activity to judge.](docs/media/4-insights.webp)
-
-<sub>Cashflow for the month, and nothing at all when there is no activity to
-judge. A month with no entries is not a tight month.</sub>
-
-</details>
-
-<sub>Captured from the app running on a physical device, against a test account
-whose most recent activity is a couple of months old. That is why the merchant
-ranking is absent and Insights reads "No activity yet".</sub>
+<sub>Captured from the app running on a physical device, with the status and
+navigation bars cropped out, against a test account whose most recent activity
+is a couple of months old. That is why the merchant ranking is absent and
+Insights reads "No activity yet".</sub>
 
 <!-- media:end -->
 
