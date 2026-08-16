@@ -22,6 +22,22 @@ test("parses signed amount CSVs with quoted commas and escaped quotes", () => {
   assert.equal(result.candidates[0].type, "expense");
 });
 
+test("infers expense and income from signed amount columns", () => {
+  const csv = [
+    "Date,Description,Amount",
+    "2026-05-12,Coffee Shop,-120.00",
+    "2026-05-13,Salary,50000.00",
+  ].join("\n");
+
+  const result = parseCsvImport(csv);
+
+  assert.equal(result.errors.length, 0);
+  assert.deepEqual(
+    result.candidates.map((candidate) => candidate.type),
+    ["expense", "income"],
+  );
+});
+
 test("parses debit and credit split bank CSVs", () => {
   const csv = [
     "Date,Narration,Withdrawal Amount,Deposit Amount",
